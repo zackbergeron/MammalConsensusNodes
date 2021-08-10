@@ -5,6 +5,7 @@
 import sys
 
 infilename = sys.argv[1]
+option = sys.argv[2]
 
 # function to determine output feature type given the input features
 # for example, combination of gene and exon but no CDS will yield UTR,
@@ -124,12 +125,17 @@ for locus in d:
 		#generate output - two options here:
 		# get counts of each feature type for a locus or get sequence length proportions of each feature type for a locus
 		
-		# total_annotation_bases = 0
+		if option == "l":
+			total_annotation_bases = 0
 		for fk, fv in final_annotation.items():
 			for ft in fv:
-				output_feature_dict[ft] += 1
-				# annotation_length = int(fk.split("@")[1])-int(fk.split("@")[0])
-				# output_feature_dict[ft] += annotation_length
-				# total_annotation_bases += annotation_length
-		print (locus+","+",".join([str(x) for x in output_feature_dict.values()]))
-		# print (locus+","+",".join([str(round(x/total_annotation_bases,3)) for x in output_feature_dict.values()]))
+				if option == "c":
+					output_feature_dict[ft] += 1
+				elif option == "l":
+					annotation_length = int(fk.split("@")[1])-int(fk.split("@")[0])
+					output_feature_dict[ft] += annotation_length
+					total_annotation_bases += annotation_length
+		if option == "c":
+			print (locus+","+",".join([str(x) for x in output_feature_dict.values()]))
+		elif option == "l":
+			print (locus+","+",".join([str(round(x/total_annotation_bases,3)) for x in output_feature_dict.values()]))

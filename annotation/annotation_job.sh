@@ -27,6 +27,6 @@ module load BEDTools/2.27.1-foss-2018b
 
 bedtools intersect -a full_table_sorted.bed -b ${assemblyGFF} -wa -wb > full_table_annotated.bed
 
-python3 ~/alex_data/tree_shew_analysis/TreeshrewProject/annotation/annotation_bed2table2.py full_table_annotated.bed > annotations.txt
+python3 ~/alex_data/tree_shew_analysis/TreeshrewProject/annotation/annotation_bed2table2.py full_table_annotated.bed c > annotations.txt
 
 date
