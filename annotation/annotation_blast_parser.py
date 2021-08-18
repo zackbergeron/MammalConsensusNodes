@@ -1,7 +1,8 @@
-# this script takes BLAST outfmt 6 table and produces BED file,
-# while also filtering out overlapping and / or closely matching sequences
-# this BED file can then be annotated using bedtools intersect with the GFF file of interest
-
+'''
+this script takes BLAST outfmt 6 table and produces BED file,
+while also filtering out overlapping and / or closely matching sequences
+this BED file can then be annotated using bedtools intersect with the GFF file of interest
+'''
 import sys
 
 infile = sys.argv[1]
@@ -11,8 +12,10 @@ maxovlp = 5 #(greater than 5 bp overlap is considered overlapping)
 maxgap = -10000 #(gap over 10Kbp is considered to be too large to join pieces, only one will be selected)
 maxscoreratio = 0.05 #(bitscores that are only 5% different are considered to be too close to accurately discriminate)
 
-# function to parse the BLASTN format 6 and get the needed fields out
 def get_hit(row):
+	'''
+	function to parse the BLASTN format 6 and get the needed fields out
+	'''
 	qstart = int(row[6])
 	qend = int(row[7])
 	tstart = int(row[8])
@@ -20,16 +23,20 @@ def get_hit(row):
 	bitscore = float(row[11])
 	return [qstart, qend, tstart, tend, bitscore]
 
-# compute overlap (positive) or gap (negative) between two BLASTN HSPs
 def getOverlap(a, b):
+	'''
+	compute overlap (positive) or gap (negative) between two BLASTN HSPs
+	'''
 	a0=min(a)-1 #start one pos less to detect 1 bp overlap
 	a1=max(a)
 	b0=min(b)-1 #start one pos less to detect 1 bp overlap
 	b1=max(b)
 	return min(a1, b1) - max(a0, b0)
 
-# get all retained HSPs, select the best one, and produce the BED formatted output
 def output_best_hit(hit_data, query_name):
+	'''
+	get all retained HSPs, select the best one, and produce the BED formatted output
+	'''
 	# if any HSPs retained
 	if len(hit_data) > 0:
 		# only 1 Target retained
@@ -73,9 +80,11 @@ def output_best_hit(hit_data, query_name):
 	else:
 		return None
 
-# given a collection of HSPs (1 or more), get the overall range and strand
-# thus if the HSPs are too disjunct, the overall range will be too large...
 def get_final_coordinates(hit_data_value):
+	'''
+	given a collection of HSPs (1 or more), get the overall range and strand
+	thus if the HSPs are too disjunct, the overall range will be too large...
+	'''
 	# initialize min and max coordinates on Query and on Target
 	minq = 0
 	maxq = 0

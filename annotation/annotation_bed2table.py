@@ -1,16 +1,19 @@
-# this script takes annotated BED file and 
-# produces a count table of different marker types of interest for each (SISRS) locus
-# currently the whole annotation table is stored in RAM, watch out when the files are large
-
+'''
+this script takes annotated BED file and 
+produces a count table of different marker types of interest for each (SISRS) locus
+currently the whole annotation table is stored in RAM, watch out when the files are large
+'''
 import sys
 
 infilename = sys.argv[1]
 option = sys.argv[2]
 
-# function to determine output feature type given the input features
-# for example, combination of gene and exon but no CDS will yield UTR,
-# while gene with no exon will yield intron
 def determineType(inplist):
+	'''
+	function to determine output feature type given the input features
+	for example, combination of gene and exon but no CDS will yield UTR,
+	while gene with no exon will yield intron
+	'''
 	#prep input / output
 	typelist = [x.split("@")[0] for x in inplist]
 	returnSet = set([])
