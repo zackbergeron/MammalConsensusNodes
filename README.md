@@ -41,7 +41,7 @@ taxonName4
 This step aligns SISRS loci of a particular taxon to the reference sequence (ideally, of the same taxon). Custom python script is used to filter the output and convert it to BED. BED file is sorted and intersected with the GFF file for the reference sequence. Custom python script then processess the intersected BED file to produce the final output. See **annotation** folder
 * annotation_job.sh - slurm script to submit; adjust file paths; adjust the command options on line 30 for the last script (see below)
 * annotation_blast_parser.py - BLAST to BED script run by the previous shell script; adjust parameters on lines 10-12 as needed.
-* annotation_bed2table2.py - BED to table script run by the previous shell script; two options are provided: count the number of each feature per locus (`c`), for ex. 1 CDS, 2 introns, etc.; or compute proportion of length of each feature type per locus (`l`), for ex. 0.2 CDS, 0.8 introns.
+* annotation_bed2table.py - BED to table script run by the previous shell script; two options are provided: count the number of each feature per locus (`c`), for ex. 1 CDS, 2 introns, etc.; or compute proportion of length of each feature type per locus (`l`), for ex. 0.2 CDS, 0.8 introns.
 
 ## Assess locus properties
 
