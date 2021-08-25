@@ -24,24 +24,11 @@ See **alignmentTemp** folder
 
 ## Locus annotation
 
-### Obtain SISRS locus sequences for the reference taxon
-This step takes aligned (and filtered) SISRS loci and extracts sequences of specific taxa. These would be used for annotation purposes later on
-See **getTaxContigs** folder
-* getTaxContigs.sh - slurm script to run
-* getTaxContigs.py - script run by the previous shell script
-The list of taxa to get is expected to be a text file with each taxon name on a new line:
-```
-taxonName1
-taxonName2
-taxonName3
-taxonName4
-```
-
-### Annotation
-This step aligns SISRS loci of a particular taxon to the reference sequence (ideally, of the same taxon). Custom python script is used to filter the output and convert it to BED. BED file is sorted and intersected with the GFF file for the reference sequence. Custom python script then processess the intersected BED file to produce the final output. See **annotation** folder
+This step aligns SISRS loci of a particular taxon to the reference sequence (ideally, of the same taxon). A custom script is used to retreive a reference taxon for the loci. Then BLAST is run. A custom python script is used to filter the output and convert it to BED. Overlapping hits of similar scores as well as very disjunct alignments are discarded. The BED file is then sorted and intersected with the GFF file for the reference sequence. A custom python script then processess the intersected BED file to produce the final output, either counts of different types of annotations, or length proportions of each of types of annotations. Currently the following types of annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or intergenic). See **annotation** folder
 * annotation_job.sh - slurm script to submit; adjust file paths; adjust the command options on line 30 for the last script (see below)
 * annotation_blast_parser.py - BLAST to BED script run by the previous shell script; adjust parameters on lines 10-12 as needed.
 * annotation_bed2table.py - BED to table script run by the previous shell script; two options are provided: count the number of each feature per locus (`c`), for ex. 1 CDS, 2 introns, etc.; or compute proportion of length of each feature type per locus (`l`), for ex. 0.2 CDS, 0.8 introns.
+* getTaxContigs.py - script to extract SISRS loci of a particular taxon into a single file for use with BLAST
 
 ## Assess locus properties
 
