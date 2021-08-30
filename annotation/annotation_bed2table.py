@@ -22,21 +22,26 @@ def determineType(inplist):
 	#the entire genome is annotated with region, so not helpful
 	#match is unclear, also ignoring
 	#mRNA and transcript are unnecessary given gene exon and CDS features, so ignoring as well
-	ignored_features = ["region", "match","mRNA","transcript"]
+	ignored_features = ["region", "match","transcript"]
 	#feature types, that are not in ignored and not in special, will be set to "other" in the output
-	special_features = ["pseudogene","gene","exon","CDS","lnc_RNA"]
+	special_features = ["pseudogene","gene","exon","CDS","lnc_RNA","mRNA"]
 
 	#parse special features
 	if "pseudogene" in typelist:
 		returnSet.add("pseudogene")
 	if "gene" in typelist:
-		if "exon" in typelist:
-			if "CDS" in typelist:
-				returnSet.add ("CDS")
+		if "mRNA" in typelist:
+			if "exon" in typelist:
+				if "CDS" in typelist:
+					returnSet.add ("CDS")
+				else:
+					returnSet.add ("UTR")
 			else:
-				returnSet.add ("UTR")
+				returnSet.add ("intron")
+		elif "lnc_RNA" in typelist:
+			returnSet.add ("lnc_RNA")
 		else:
-			returnSet.add ("intron")
+			returnSet.add ("other")
 	if "lnc_RNA" in typelist:
 		returnSet.add ("lnc_RNA")
 	#figure out if there are any features that qualify for 'other'
