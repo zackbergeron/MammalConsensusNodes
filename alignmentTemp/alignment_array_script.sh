@@ -13,5 +13,5 @@ module load MAFFT/7.475-gompi-2020b-with-extensions
 fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p align_list.txt)
 cat alignmentGroups/${fileline} | while read line
 do
-	mafft --auto --thread 4 new_filtered_loci/$line > aligned_loci/$line
+	mafft --auto --nwildcard --thread 4 new_filtered_loci/$line > aligned_loci/$line
 done

@@ -13,5 +13,5 @@ mkdir aligned_loci2
 
 for infile in new_filtered_loci/*.fasta
 do
-	mafft --auto --thread 4 ${infile} > aligned_loci2/$(basename ${infile})
+	mafft --auto --nwildcard --thread 4 ${infile} > aligned_loci2/$(basename ${infile})
 done
