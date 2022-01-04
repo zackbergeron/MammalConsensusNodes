@@ -46,6 +46,8 @@ This step assesses uncorrected (raw) and corrected (TN93) pairwise distances for
 This step runs phylomad. As phylomad has "control file" that specifies all parameters of the run, it is problematic to adjust it for each of the several hundred thousand runs needed. The solution here is to first adjust all parameters in the control file besides the filenames. Then a driver script takes care of adjusting the control file for each locus and running phylomad on it. Because phylomad is computationally intensive and we have too many alignments to run through, this step is set up as an array job. See **phylomad** folder
 * phylomad_prep.sh - slurm script to set up the phylomad array; adjust the paths, possibly also the number of simultaneously run jobs on line 18 after the % sign.
 * phylomad_array.sh - slurm script to run the array job; adjust the paths.
+* phylomad_collect_output.sh - slurm script to collect the results, expects results to be in the folder phylomad_assessment, adjust the script otherwise
+* phylomad_collect_array.sh - in case of large dataset, use this array script to collect the results instead, and then concatenate array results.
 
 ### Taxon composition
 This step counts number of taxa in each group as defined for the filter by taxa step. See **misc**
