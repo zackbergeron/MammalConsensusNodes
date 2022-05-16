@@ -13,7 +13,12 @@ outtaxa <- readLines(args[4])
 
 #since IQ-TREE occasionally reroots trees, have to reroot back by outgroup in order for the results to make sense
 presentouttaxa <- reftree$tip.label[reftree$tip.label %in% outtaxa]
-outgroupMRCA <- getMRCA(reftree, presentouttaxa)
+if (length(presentouttaxa) == 1){
+	outgroupTipID <- which(reftree$tip.label == presentouttaxa)
+	outgroupMRCA <- reftree$edge[reftree$edge[,2] == outgroupTipID,1]
+} else {
+	outgroupMRCA <- getMRCA(reftree, presentouttaxa)
+}
 if (outgroupMRCA != reftree$edge[1,1]){
 	reftree <- root(reftree, node= outgroupMRCA, edgelabel = T)
 }
