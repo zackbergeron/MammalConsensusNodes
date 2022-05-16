@@ -9,7 +9,6 @@
 cd $SLURM_SUBMIT_DIR
 
 date
-scripts_dir="/home/aknyshov/alex_data/tree_shew_analysis/TreeshrewProject/iqtree/"
 assessment_folder="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/iqtree_assessment_primates"
 output_prefix="combined_iqtree_primates"
 cat ${assessment_folder}/LnLs_*.csv > ${output_prefix}_dLnLs.csv
@@ -25,5 +24,5 @@ do
 	done
 done
 date
-sed -i -e 's+${assessment_folder}/scf/scf_++g' ${output_prefix}_scf.csv
+sed -i -e "s+${assessment_folder}/scf/scf_++g" ${output_prefix}_scf.csv
 date
