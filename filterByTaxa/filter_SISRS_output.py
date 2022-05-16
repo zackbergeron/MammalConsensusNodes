@@ -25,9 +25,13 @@ counter2 = 0
 for f in glob.glob(fastafolder+"/*.fasta"):
 	grouplist = []
 	seqs_for_output = {}
-	seqs = SeqIO.parse(f, "fasta")
+	seqs = list(SeqIO.parse(f, "fasta"))
+	seqlens = []
 	for seq in seqs:
-		if float(len(str(seq.seq).upper().replace("N", "")))/len(seq.seq) > minseqdata:
+		seqlens.append(len(seq.seq))
+	maxlen = max(seqlens)
+	for seq in seqs:
+		if float(len(str(seq.seq).upper().replace("N", "")))/maxlen > minseqdata:
 			seqs_for_output[seq.id] = seq.seq
 			grouplist.append(taxa_to_keep[seq.id])
 	if len(set(grouplist)) >= groupfilter and len(seqs_for_output) >= mintaxa:
