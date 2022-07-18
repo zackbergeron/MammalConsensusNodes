@@ -1,0 +1,2094 @@
+---
+title: "Treeshrew Project Data Analysis"
+author: "Alexander Knyshov"
+date: "07/18/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, dev = 'svg')
+workdirpath <- "~/data/Google_Folder/university/research/URItreeshrew"
+knitr::opts_knit$set(root.dir = workdirpath)
+```
+
+## Init
+
+```{r}
+library(ape)
+library(phytools)
+library(RColorBrewer)
+library(phangorn)
+
+library(ggplot2)
+library(ggtree)
+library(grid)
+library(gridExtra)
+library(gg3D)
+
+library(ade4)
+library(MASS)
+library(plot3D)
+library(viridis)
+
+library(scaleboot)
+
+library(reshape2)
+
+library(tidyverse)
+library(rstatix)
+```
+
+## Figure 1
+
+### Fig 1 prep
+
+```{r}
+tree1 <- "241-mammalian-2020v2.phast-242.nh"
+tree2 <- read.tree(tree1)
+taxtable <- read.csv("taxon_sampling_031021.csv", stringsAsFactors = F)
+remain_taxa <- gsub(" ", "_",taxtable$species)
+remain_taxa <- remain_taxa[-grep("Tupaia_belangeri",remain_taxa)]
+tree2 <- keep.tip(tree2, remain_taxa)
+tree3 <- bind.tip(tree2, "Tupaia_belangeri", edge.length=0.1, where=17, position=0.01)
+tree3$edge.length <- NULL
+tree3$node.label <- NULL
+
+#make insets
+inset1 <- "(((Scandentia, Primatomorpha), Glires), Outgroup);"
+inset2 <- "((Primatomorpha, (Scandentia, Glires)), Outgroup);"
+inset3 <- "(((Primatomorpha, Glires), Scandentia), Outgroup);"
+inset1t <- read.tree(text=inset1)
+inset2t <- read.tree(text=inset2)
+inset3t <- read.tree(text=inset3)
+clrs <- list(Glires="Glires",
+             Primatomorpha="Primatomorpha",
+             Scandentia="Scandentia")
+cls0 <- brewer.pal(5,"Set1")[3:5]
+branchThickness = 2
+tipSize= 10
+pic_id_df <- ggimage::phylopic_uid(c("Tupaia", "humans", "Myomorpha", "Sorex"))
+pic_id_df$name <- c("Scandentia","Primatomorpha","Glires","Outgroup")
+pic_id_df$uid[3] <- "81930c02-5f26-43f7-9c19-e9831e780e53"
+pic_id_df$uid[2] <- "a9f4ebd5-53d7-4de9-9e66-85ff6c2d513e"
+pic_id_df$uid[4] <- "5ede126f-6a18-4a08-898d-e48828e7dcaa"
+pic_id_df$picSize <- c("2","1","3","3")
+coloredinset1 <- groupOTU(inset1t,clrs)
+coloredinset2 <- groupOTU(inset2t,clrs)
+coloredinset3 <- groupOTU(inset3t,clrs)
+```
+
+### Fig 1 inset plots
+
+```{r, fig.height=3.97, fig.width=5.21}
+ggtree(coloredinset1, size=branchThickness) %<+% pic_id_df + 
+  geom_tiplab(aes(color=group), size=tipSize, offset=1.3) + 
+  xlim(0,10) +
+  scale_color_manual(values = c("0"="black",
+                                Glires=cls0[1],
+                                Primatomorpha=cls0[2],
+                                Scandentia=cls0[3])) +
+  geom_tiplab(aes(image=uid, color=group,size=picSize), offset=0.1, geom="phylopic") +
+  scale_size_manual(values=c(0.1,0.075,0.1,0.15)) +
+  theme(legend.position = "none")
+
+ggtree(coloredinset2, size=branchThickness) %<+% pic_id_df + 
+  geom_tiplab(aes(color=group), size=tipSize, offset=1.3) + 
+  xlim(0,10) +
+  scale_color_manual(values = c("0"="black",
+                                Glires=cls0[1],
+                                Primatomorpha=cls0[2],
+                                Scandentia=cls0[3])) +
+  geom_tiplab(aes(image=uid, color=group,size=picSize), offset=0.1, geom="phylopic") +
+  scale_size_manual(values=c(0.1,0.075,0.1,0.15)) +
+  theme(legend.position = "none")
+
+ggtree(coloredinset3, size=branchThickness) %<+% pic_id_df + 
+  geom_tiplab(aes(color=group), size=tipSize, offset=1.3) + 
+  xlim(0,10) +
+  scale_color_manual(values = c("0"="black",
+                                Glires=cls0[1],
+                                Primatomorpha=cls0[2],
+                                Scandentia=cls0[3])) +
+  geom_tiplab(aes(image=uid, color=group,size=picSize), offset=0.1, geom="phylopic") +
+  scale_size_manual(values=c(0.1,0.075,0.1,0.15)) +
+  theme(legend.position = "none")
+```
+
+### Fig 1 main tree prep
+
+```{r}
+collapse_nodes <- function(t1, node){
+  t1$edge.length[t1$edge[,1] == length(t1$tip.label)+node] <- t1$edge.length[t1$edge[,1] == length(t1$tip.label)+node] + t1$edge.length[which(t1$edge[,2] == length(t1$tip.label)+node)]
+  t1$edge.length[which(t1$edge[,2] == length(t1$tip.label)+node)] <- 0
+  t2 <- di2multi(t1)
+  return(t2)
+}
+tree4a <- bind.tip(tree2, "Tupaia_belangeri", edge.length=0.1, where=17, position=0.01)
+#collapse the problematic node
+tree4b <- collapse_nodes(tree4a,53-length(tree4a$tip.label))
+tree4b$edge.length <- NULL
+tree4b$node.label <- NULL
+tree4c <- tree4b
+tree4c$tip.label <- gsub("_", " ", tree4c$tip.label)
+clrs <- list(Glires=taxtable$species[taxtable$group == "Lagomorpha" | taxtable$group == "Rodentia"],
+             Primatomorpha=taxtable$species[taxtable$group == "Primates" | taxtable$group == "Dermoptera"],
+             Scandentia=taxtable$species[taxtable$group == "Scandentia"])
+coloredtree4c <- groupOTU(tree4c,clrs)
+offsetVal = 7.5
+p1_1 <- ggtree(coloredtree4c, aes(color=group), size=1) + 
+  geom_tiplab(size=3, fontface=3) + 
+  xlim(0,40) +
+  scale_color_manual(values = c("0"="black",
+                                Glires=cls0[1],
+                                Primatomorpha=cls0[2],
+                                Scandentia=cls0[3])) + #,
+  theme(legend.position = "none") +
+  geom_cladelabel(53,"Primatomorpha", offset=offsetVal, color=cls0[2], barsize=2, offset.text=0.1) + 
+  geom_cladelabel(67,"Scandentia", offset=offsetVal, color=cls0[3], barsize=2, offset.text=0.1) +
+  geom_cladelabel(69,"Glires", offset=offsetVal, color=cls0[1], barsize=2, offset.text=0.1) +
+  geom_cladelabel(95,"outgroup", offset=offsetVal, barsize=2, offset.text=0.1)
+```
+
+### Fig 1 main tree plot
+
+```{r, fig.height=6.70, fig.width=10.67}
+flip(p1_1, 53,67)
+#1024x643
+```
+
+### Produce and save NNIs of the main tree for testing
+Switch eval to TRUE to run the chunk
+```{r, eval=FALSE}
+### write trees for testing
+#get treeshrew trees
+nnis <-nni (tree3)
+#sister to glires
+plot(nnis[[3]], cex=0.4)
+#sister to PM+Glires
+plot(nnis[[4]], cex=0.4)
+#save
+alt1 <- nnis[[3]]
+alt2 <- nnis[[4]]
+combo_tree <- c(tree3, alt1 ,alt2)
+#write.tree(combo_tree, "treeshrew_trees_to_fit.tre")
+#primates
+nnis <-nni (tree3)
+plot(nnis[[8]], cex=0.4)
+alt1 <- nnis[[7]]
+alt2 <- nnis[[8]]
+combo_tree <- c(tree3, alt1 ,alt2)
+#write.tree(combo_tree, "primates_trees_to_fit.tre")
+```
+
+## Loci properties
+
+### Prep the tables
+
+```{r}
+#loci properties
+amatab <- read.table("data_analysis_revisions/amas_total_results.txt", header = T, stringsAsFactors = F, check.names = F)
+
+# Saturation
+satur_table <- read.csv("data_analysis_revisions/saturation_output.csv", header = F, stringsAsFactors = F)
+colnames(satur_table) <- c("Alignment_name", "Slope", "Rsq", "Mean_TN93_distance","SD_TN93_distance")
+
+annot_table_pre <- read.csv("data_analysis_revisions/annotations.csv", header = T, stringsAsFactors = F)
+
+#get most frequent from the left
+annot_table <- data.frame(Alignment_name=annot_table_pre[,1], Locus_type=apply(annot_table_pre[,2:8],1, function (x) colnames(annot_table_pre)[2:8][which.max(x)]))
+annot_table$Alignment_name <- paste0(annot_table$Alignment_name, ".fasta")
+
+# Phylomad
+phylomad_tab <- read.csv("data_analysis_revisions/combined_phylomad.csv", header = F, stringsAsFactors = F)
+colnames(phylomad_tab) <- c("Alignment_name","chisq","multlik","biochemdiv","consind","delta","brsup","CIbrsup","trlen","maha")
+
+# join amas, saturation, phylomad
+combo_table1 <- merge(amatab, satur_table, by = "Alignment_name", all = TRUE)
+combo_table1 <- merge(combo_table1, phylomad_tab, by = "Alignment_name", all = TRUE)
+combo_table1 <- combo_table1[combo_table1$Alignment_name!="",]
+combo_table1 <- merge(combo_table1, annot_table, by = "Alignment_name", all = TRUE)
+colnames(combo_table1)[32] <- "Saturation_slope" 
+colnames(combo_table1)[44] <- "Model_fit_SDPD" 
+
+#filter out loci with BLC R-squared less than 0.25
+screen_data <- read.csv("data_analysis_revisions/screening_output.csv", header=T)
+screen_data_filt <- screen_data[match(combo_table1$Alignment_name,screen_data$locname ),]
+combo_table2filt <- combo_table1[screen_data_filt$Rsq>0.25,]
+```
+Estimate the peak locations in the model fit distribution
+```{r}
+phylomadDensity <- density(combo_table2filt$Model_fit_SDPD, na.rm = T)
+#get X coordinate of the peaks
+phylomadDensity$x[c(F, diff(diff(phylomadDensity$y)>=0)<0)]
+```
+Calculate the proportion of different locus types
+```{r}
+round(table(combo_table2filt$Locus_type)/length(combo_table2filt$Locus_type)*100,2)
+```
+
+### Prep the supplemental figure of loci properties
+
+```{r}
+fillcol1 <- "#0072B2"
+fillcol2 <- "#CC79A7"
+fillcol3 <- "#D55E00"
+#colnames(combo_table2filt)
+p2_1 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=No_of_taxa, y=..scaled..),fill=fillcol1,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_2 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=Alignment_length, y=..scaled..),fill=fillcol1,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_3 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=Missing_percent, y=..scaled..),fill=fillcol1,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_4 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=Proportion_variable_sites, y=..scaled..),fill=fillcol1,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_5 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=Proportion_parsimony_informative, y=..scaled..),fill=fillcol1,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_6 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=GC_content, y=..scaled..),fill=fillcol2,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_7 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=Saturation_slope, y=..scaled..),fill=fillcol2,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_8 <- ggplot(combo_table2filt) + 
+  stat_density(aes(x=Model_fit_SDPD, y=..scaled..),fill=fillcol2,color="black", show.legend = F, geom="area") +
+  theme_bw() +
+  labs(y = "scaled density")
+p2_9 <- ggplot(combo_table2filt) + 
+  geom_bar(aes(x=Locus_type),fill=fillcol3,color="black", show.legend = F) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = -30, vjust = 0.5, hjust=0))
+```
+
+### plot the figure
+
+```{r, fig.height=6.75, fig.width=10.67}
+grid.arrange(p2_1,p2_2,p2_6,
+             p2_4,p2_5,p2_7,
+             p2_3,p2_9,p2_8,
+             ncol=3, nrow =3)
+xyMin=0.005
+xyMax=0.995
+xyOneThird=0.335
+xyTwoThirds=0.665
+xB = c(xyMin, xyTwoThirds, xyTwoThirds, xyOneThird, xyOneThird, xyMin)
+yB = c(xyMax, xyMax, xyOneThird,xyOneThird, xyMin, xyMin)
+grid.polygon(xB,yB,gp=gpar(fill="transparent",lex=2))
+xR = c(xyTwoThirds, xyMax, xyMax, xyTwoThirds)
+yR = c(xyMax, xyMax, xyMin, xyMin)
+grid.polygon(xR,yR,gp=gpar(fill="transparent",lex=2))
+xO = c(xyOneThird, xyTwoThirds, xyTwoThirds, xyOneThird)
+yO = c(xyOneThird, xyOneThird, xyMin, xyMin)
+grid.polygon(xO,yO,gp=gpar(fill="transparent",lex=2))
+#1024 x 648
+```
+
+## PCA of loci properties
+
+### prep the data
+
+```{r}
+combo_table2filt2 <- na.omit(combo_table2filt[,c(2,3,6,8,10,12,32,44)])
+pcadata <- dudi.pca(combo_table2filt2, scannf = F, nf=2)
+
+get_density <- function(x, y, ...) {
+  dens <- MASS::kde2d(x, y, ...)
+  ix <- findInterval(x, dens$x)
+  iy <- findInterval(y, dens$y)
+  ii <- cbind(ix, iy)
+  return(dens$z[ii])
+}
+pcadataDF <- as.data.frame(pcadata$li)
+pcadataDF$density <- get_density(pcadataDF$Axis1, pcadataDF$Axis2, n = 100)
+
+p1 <- ggplot(pcadataDF) + 
+  geom_point(aes(x=Axis1, y=Axis2,color=density), show.legend = F) +
+  theme_bw()
+p1a <- layer_scales(p1)
+
+k1 <- min(pcadata$c1[, 1])/p1a$x$range$range[1] #xmin
+k2 <- max(pcadata$c1[, 1])/p1a$x$range$range[2] #xmax
+k3 <- min(pcadata$c1[, 2])/p1a$y$range$range[1] #ymin
+k4 <- max(pcadata$c1[, 2])/p1a$y$range$range[2] #ymax
+k <- c(k1, k2, k3, k4)
+pcadataC1 <- 0.9 * pcadata$c1/max(k)
+pcadataC1 <- as.data.frame(pcadataC1)
+
+pcadataC1 <-cbind(rownames(pcadataC1),pcadataC1)
+rownames(pcadataC1) <-NULL
+colnames(pcadataC1)[1] <- "var"
+```
+
+### plot the figure
+
+```{r, fig.height=8, fig.width=8}
+p1 + geom_segment(data= pcadataC1,aes(x=0, y=0,xend=CS1,yend=CS2),arrow = arrow(), color="red", size=1) + 
+  geom_label(data = pcadataC1, aes(x=CS1,y=CS2,label=var),alpha=0.7, size=2.5)
+#1200 x 751
+```
+
+
+## GC content vs locus type
+```{r}
+combo_table2filt3 <- na.omit(combo_table2filt[,c(1,12,45)])
+ggplot(combo_table2filt3, aes(x=Locus_type, y=GC_content, fill=Locus_type)) + 
+  geom_violin(show.legend = F) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw() + 
+  theme(legend.position = "none", axis.text.x = element_text(angle = -30, vjust = 0.5, hjust=0))
+```
+
+
+## Treeshrew signal figures
+
+### Inidividual fit data prep
+
+```{r}
+dLnLtabTSHi <- read.csv("data_analysis_revisions/combined_iqtree_treeshrew_dLnLs.csv", header = F, stringsAsFactors = F)
+
+screen_data_filtTSHi <- screen_data[match (dLnLtabTSHi$V1,screen_data$locname ),]
+
+amatabfiltTSHi <- amatab[match (dLnLtabTSHi$V1,amatab$Alignment_name ),]
+
+
+dLnLtabTSHi <- dLnLtabTSHi[screen_data_filtTSHi$Rsq>0.25,]
+```
+
+###check summed likelihoods
+```{r}
+apply(dLnLtabTSHi[,2:4], 2, sum, na.rm=T)
+```
+
+
+### AU test
+Test interpretation as described by the developer. See the original publications for more info.
+
+The p-value of the approximately unbiased test. This is the main result of consel, while rest of the p-values in the table are supplementary. It is derived from the theory of the signed distance and the curvature of the boundary as explained later. Let us denote it AUi for the item i. We may reject the possibility that item i has the largest expected value of Yi when AUi < 0.05 at the significance level 0.05. The p-values are shown in percent, and the standard errors are given in parentheses.
+
+We can interpret 1 − p as the selective p-value. So, we can reject the null (t1 is not true) and claim that t1 is the true tree when p > 0.95 at α = 0.05.
+```{r}
+AUtestTSHi <- relltest(na.omit(as.matrix(dLnLtabTSHi[,c(2:4)])),nb=1000)
+AUtestTSHisummary <- summary(AUtestTSHi)
+AUtestTSHisummary
+```
+
+```{r}
+AUtestTSHisummaryAttr <- attributes(AUtestTSHisummary)
+AUtestTSHipval <- 1-AUtestTSHisummaryAttr$table$value[which.max(AUtestTSHisummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestTSHipval
+```
+
+###prep rescaled likelihood data
+
+```{r}
+dLnLtabTSHir <- dLnLtabTSHi
+dLnLtabTSHir[,2] <- as.numeric(dLnLtabTSHir[,2])
+dLnLtabTSHir[,3] <- as.numeric(dLnLtabTSHir[,3])
+dLnLtabTSHir[,4] <- as.numeric(dLnLtabTSHir[,4])
+dLnLtabTSHir <- na.omit(dLnLtabTSHir)
+dLnLtabTSHir[,2:4] <- (dLnLtabTSHir[,2:4] - apply(dLnLtabTSHir[,2:4], 1, min))/amatabfiltTSHi$Alignment_length
+colnames(dLnLtabTSHir) <- c("locname","PM_sister","GL_sister","PM_GL_sister")
+```
+
+### select 1000 top signal strength outliers
+
+```{r}
+dLnLtabTSHirmax <- apply(dLnLtabTSHir[,2:4], 1, max)
+dLnLtabTSHirOUT <- dLnLtabTSHir[order(dLnLtabTSHirmax, decreasing = T),][1:1000,]
+dLnLtabTSHirNONOUT <- dLnLtabTSHir[!(dLnLtabTSHir$locname %in% dLnLtabTSHirOUT$locname),]
+```
+
+Output locus names for the subsets to be analyzed in Astral
+```{r}
+write(dLnLtabTSHir$locname, "locnamesTSHi.txt")
+write(dLnLtabTSHirOUT$locname, "locnamesTSHiOUT.txt")
+write(dLnLtabTSHirNONOUT$locname, "locnamesTSHiNONOUT.txt")
+```
+
+### check summed likelihoods for the outlier / non outlier subsets
+```{r}
+apply(dLnLtabTSHi[dLnLtabTSHi$V1 %in% dLnLtabTSHirOUT$locname,c(2:4)], 2, sum, na.rm=T)
+apply(dLnLtabTSHi[dLnLtabTSHi$V1 %in% dLnLtabTSHirNONOUT$locname,c(2:4)], 2, sum, na.rm=T)
+```
+
+### AU tests for outliers and non-outliers
+```{r}
+AUtestTSHiNONOUT <- relltest(na.omit(as.matrix(dLnLtabTSHi[dLnLtabTSHi$V1 %in% dLnLtabTSHirNONOUT$locname,c(2:4)])),nb=1000)
+AUtestTSHiNONOUTsummary <- summary(AUtestTSHiNONOUT)
+AUtestTSHiNONOUTsummary
+```
+
+```{r}
+AUtestTSHiOUT <- relltest(na.omit(as.matrix(dLnLtabTSHi[dLnLtabTSHi$V1 %in% dLnLtabTSHirOUT$locname,c(2:4)])),nb=1000)
+AUtestTSHiOUTsummary <- summary(AUtestTSHiOUT)
+AUtestTSHiOUTsummary
+```
+
+```{r}
+AUtestTSHiNONOUTsummaryAttr <- attributes(AUtestTSHiNONOUTsummary)
+AUtestTSHiNONOUTpval <- 1-AUtestTSHiNONOUTsummaryAttr$table$value[which.max(AUtestTSHiNONOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestTSHiNONOUTpval
+```
+
+```{r}
+AUtestTSHiOUTsummaryAttr <- attributes(AUtestTSHiOUTsummary)
+AUtestTSHiOUTpval <- 1-AUtestTSHiOUTsummaryAttr$table$value[which.max(AUtestTSHiOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestTSHiOUTpval
+```
+
+
+###prep outlier plot data
+```{r}
+theta=-45
+phi=-35.3
+ceiling_dec <- function(x, level=1) round(x + 5*10^(-level-1), level)
+pre_outlier_plot_df <- function(inputdf){
+  scaler_val <- ceiling_dec(max(inputdf[,2:4]),2)
+  inputdf <- rbind(inputdf, as.data.frame(list("scaler",scaler_val,scaler_val,scaler_val), col.names=colnames(inputdf)))
+  pmat1 <-  perspbox(z=diag(2), plot=F, theta=theta, phi=phi)
+  #reorder axes
+  trans3d1 <- trans3D(x = inputdf[,4], y = inputdf[,2], z =inputdf[,3], pmat = pmat1)
+  get_density <- function(x, y, ...) {
+    dens <- MASS::kde2d(x, y, ...)
+    ix <- findInterval(x, dens$x)
+    iy <- findInterval(y, dens$y)
+    ii <- cbind(ix, iy)
+    return(dens$z[ii])
+  }
+  
+  dens_test <- get_density(trans3d1$x, trans3d1$y,n=1000)
+  dens_test <- dens_test/min(dens_test)
+  inputdf$density <- dens_test
+  return(inputdf)
+}
+```
+
+
+```{r}
+dLnLtabTSHirOUTp3_1 <- pre_outlier_plot_df(dLnLtabTSHirOUT)
+p3_1 <- ggplot(dLnLtabTSHirOUTp3_1, aes(x=PM_GL_sister, y=PM_sister, z=GL_sister, color=density, fill=density)) +
+  axes_3D(theta=theta, phi=phi) +
+  stat_3D(theta=theta, phi=phi, shape=21,size=3) +
+  axis_labs_3D(theta=theta, phi=phi, size=5,
+               hjust=c(1,1,1.2,1.2,1.2,1.2),
+               vjust=c(-.5,-.5,-.2,-.2,1.2,1.2)) +
+  scale_fill_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  scale_color_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  theme_void() + theme(legend.position = c(0.8, 0.5))
+```
+
+###separate loci by the topology they favor (have the highest signal for)
+
+```{r}
+get_favoring_lnl_loci <- function(inputdf, signal="dLnL"){
+  inputdfb <- apply(inputdf[,2:4], 1, function(x) which(x == max(x)))
+  inputdfa <- apply(inputdf[,2:4], 1, function(x) x[which(x == max(x))])
+  returndf <- as.data.frame(inputdf$locname[lapply(inputdfa, length) == 1])
+  returndf$topology <- as.numeric(unlist(inputdfb[lapply(inputdfb, length) == 1]))
+  returndf$dLnL <- as.numeric(unlist(inputdfa[lapply(inputdfa, length) == 1]))
+  colnames(returndf) <- c("locname","topology",signal)
+  returndf$topology <- factor(returndf$topology, labels = colnames(inputdf)[2:4])
+  return(returndf)
+}
+```
+
+
+```{r}
+dLnLtabTSHirF <- get_favoring_lnl_loci(dLnLtabTSHir)
+dLnLtabTSHirFfilt <- na.omit(dLnLtabTSHirF)
+```
+
+```{r}
+cls1 <- brewer.pal(3,"Set3")
+dLnLtabTSHirFfiltOUT <- dLnLtabTSHirFfilt[dLnLtabTSHirFfilt$locname %in% dLnLtabTSHirOUT$locname,]
+dLnLtabTSHirFfiltNONOUT <- dLnLtabTSHirFfilt[dLnLtabTSHirFfilt$locname %in% dLnLtabTSHirNONOUT$locname,]
+```
+
+###check counts of loci favoring each topology in each subset
+and do stat tests
+```{r}
+#check counts
+table(dLnLtabTSHirFfilt$topology)
+chisq_all_TSHi <- chisq_test(as.data.frame(table(dLnLtabTSHirFfilt$topology))[,2])
+chisq_all_TSHi
+Nloci_all_TSHi <-  chisq_all_TSHi$p
+```
+
+```{r}
+table(dLnLtabTSHirFfiltOUT$topology)
+chisq_out_TSHi <- chisq_test(as.data.frame(table(dLnLtabTSHirFfiltOUT$topology))[,2])
+chisq_out_TSHi
+Nloci_out_TSHi <- chisq_out_TSHi$p
+```
+
+
+```{r}
+table(dLnLtabTSHirFfiltNONOUT$topology)
+chisq_nonout_TSHi <- chisq_test(as.data.frame(table(dLnLtabTSHirFfiltNONOUT$topology))[,2])
+chisq_nonout_TSHi
+Nloci_nonout_TSHi <- chisq_nonout_TSHi$p
+```
+
+###check signal strength of loci fav each topo in each subset
+```{r}
+median(dLnLtabTSHirFfilt$dLnL[dLnLtabTSHirFfilt$topology == "PM_sister"])
+median(dLnLtabTSHirFfilt$dLnL[dLnLtabTSHirFfilt$topology == "GL_sister"])
+median(dLnLtabTSHirFfilt$dLnL[dLnLtabTSHirFfilt$topology == "PM_GL_sister"])
+```
+
+
+```{r}
+median(dLnLtabTSHirFfiltOUT$dLnL[dLnLtabTSHirFfiltOUT$topology == "PM_sister"])
+median(dLnLtabTSHirFfiltOUT$dLnL[dLnLtabTSHirFfiltOUT$topology == "GL_sister"])
+median(dLnLtabTSHirFfiltOUT$dLnL[dLnLtabTSHirFfiltOUT$topology == "PM_GL_sister"])
+```
+
+```{r}
+median(dLnLtabTSHirFfiltNONOUT$dLnL[dLnLtabTSHirFfiltNONOUT$topology == "PM_sister"])
+median(dLnLtabTSHirFfiltNONOUT$dLnL[dLnLtabTSHirFfiltNONOUT$topology == "GL_sister"])
+median(dLnLtabTSHirFfiltNONOUT$dLnL[dLnLtabTSHirFfiltNONOUT$topology == "PM_GL_sister"])
+```
+
+###test differences in signal strength
+```{r}
+#use Kruskal-Wallis+wilcox.test
+run_custom_tests_unpaired <- function(dframe, signal){
+  dframe$locname <- as.factor(dframe$locname)
+  frml <- as.formula(paste(as.character(signal), "~", "topology"))
+  test_results <- kruskal.test(frml, data = dframe)
+  print(test_results)
+  if (test_results$p.value > 0.05){
+    return(test_results$p.value)
+  } else {
+    pwc <- wilcox_test(data=dframe, frml, paired = F, p.adjust.method = "bonferroni")
+    print (pwc)
+    medianvals <- dframe %>% group_by(topology) %>% summarise(across(!!ensym(signal), median, na.rm = TRUE)) %>% arrange(desc(!!ensym(signal)))
+    print(medianvals)
+    two_best <- pull(medianvals,topology)[1:2]
+    print(two_best)
+    return(pwc$p.adj[which(pwc$group1 %in% two_best & pwc$group2 %in% two_best)])
+  }
+  
+  
+}
+
+```
+
+
+```{r}
+lnLsignal_all_tshIND <- run_custom_tests_unpaired(dLnLtabTSHirFfilt, "dLnL")
+lnLsignal_out_tshIND <- run_custom_tests_unpaired(dLnLtabTSHirFfiltOUT, "dLnL")
+lnLsignal_nonout_tshIND <- run_custom_tests_unpaired(dLnLtabTSHirFfiltNONOUT, "dLnL")
+```
+
+###prep signal and count plots for individual fit data
+```{r}
+dLnLtabTSHirFfiltplot <- dLnLtabTSHirFfilt
+dLnLtabTSHirFfiltplot$type <- rep("All", length(dLnLtabTSHirFfilt$locname))
+dLnLtabTSHirFfiltplot <- rbind(dLnLtabTSHirFfiltplot, cbind(dLnLtabTSHirFfiltOUT, type=rep("Outliers", length(dLnLtabTSHirFfiltOUT$locname))))
+dLnLtabTSHirFfiltplot <- rbind(dLnLtabTSHirFfiltplot, cbind(dLnLtabTSHirFfiltNONOUT, type=rep("Non-outliers", length(dLnLtabTSHirFfiltNONOUT$locname))))
+
+dLnLtabTSHirFfiltplot2 <- data.frame(topology=rep(c("PM_sister", "GL_sister","PM_GL_sister"),3),
+                            type=c(rep("All",3), rep("Outliers",3),rep("Non-outliers",3)),
+                            lnL=c(sum(dLnLtabTSHi$V2),
+                                  sum(dLnLtabTSHi$V3),
+                                  sum(dLnLtabTSHi$V4),
+                                  sum(dLnLtabTSHi$V2[dLnLtabTSHi$V1 %in% dLnLtabTSHirOUT$locname]),
+                                  sum(dLnLtabTSHi$V3[dLnLtabTSHi$V1 %in% dLnLtabTSHirOUT$locname]),
+                                  sum(dLnLtabTSHi$V4[dLnLtabTSHi$V1 %in% dLnLtabTSHirOUT$locname]),
+                                  sum(dLnLtabTSHi$V2[dLnLtabTSHi$V1 %in% dLnLtabTSHirNONOUT$locname]),
+                                  sum(dLnLtabTSHi$V3[dLnLtabTSHi$V1 %in% dLnLtabTSHirNONOUT$locname]),
+                                  sum(dLnLtabTSHi$V4[dLnLtabTSHi$V1 %in% dLnLtabTSHirNONOUT$locname])
+                                  ))
+dLnLtabTSHirFfiltplot2$topology <- factor(dLnLtabTSHirFfiltplot2$topology, levels = c("PM_sister","GL_sister","PM_GL_sister"))
+
+p3_3 <- ggplot(dLnLtabTSHirFfiltplot, aes(x=topology,fill=topology)) + theme_bw()+
+  geom_bar(show.legend = F,color="black") + scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+p3_5 <- ggplot(dLnLtabTSHirFfiltplot, aes(x=topology,y=dLnL,fill=topology)) + theme_bw()+
+  geom_violin(color="black") + 
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  scale_y_continuous(trans = "log10") +
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(legend.position = "none") +
+  ylab("log10(ΔlnL)") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+p3_7 <- ggplot(dLnLtabTSHirFfiltplot2, aes(x=topology,y=lnL, fill=topology)) + theme_bw()+
+  geom_point(show.legend = F,color="black") + 
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+```
+
+## Loci properties vs indiv fit topology
+
+### prep the data
+Add taxon composition
+```{r}
+taxcomptab <- read.csv("data_analysis_revisions/taxon_composition.csv", header = T, stringsAsFactors = F)
+combo_table3 <- merge(combo_table2filt, taxcomptab, by = "Alignment_name", all = F)
+combo_table3$Glires_fraction <- (combo_table3$Rodentia + combo_table3$Lagomorpha) / (combo_table3$Rodentia + combo_table3$Lagomorpha + combo_table3$Dermoptera+ combo_table3$Primates)
+combo_table3$Primatomorpha_fraction <- (combo_table3$Dermoptera + combo_table3$Primates) / (combo_table3$Rodentia + combo_table3$Lagomorpha + combo_table3$Dermoptera+ combo_table3$Primates)
+```
+Add signal
+```{r}
+combo_table3$topology <- dLnLtabTSHirF$topology[match(combo_table3$Alignment_name, dLnLtabTSHirF$locname)]
+combo_table3$dLnL <- dLnLtabTSHirF$dLnL[match(combo_table3$Alignment_name, dLnLtabTSHirF$locname)]
+
+combo_table3filt <- combo_table3[!is.na(combo_table3$topology),]
+```
+
+### Stats
+
+
+```{r}
+combo_table3filt_tests <- combo_table3filt
+colnames(combo_table3filt_tests)[1] <- "locname"
+run_custom_tests_unpaired(combo_table3filt_tests, "No_of_taxa")
+run_custom_tests_unpaired(combo_table3filt_tests, "Glires_fraction")
+run_custom_tests_unpaired(combo_table3filt_tests, "Primatomorpha_fraction")
+run_custom_tests_unpaired(combo_table3filt_tests, "Alignment_length")
+run_custom_tests_unpaired(combo_table3filt_tests, "Missing_percent")
+run_custom_tests_unpaired(combo_table3filt_tests, "Proportion_variable_sites")
+run_custom_tests_unpaired(combo_table3filt_tests, "Proportion_parsimony_informative")
+run_custom_tests_unpaired(combo_table3filt_tests, "Model_fit_SDPD")
+run_custom_tests_unpaired(combo_table3filt_tests, "Saturation_slope")
+run_custom_tests_unpaired(combo_table3filt_tests, "GC_content")
+```
+Locus properties
+```{r}
+loctabTSHi <- cbind(PM=table(combo_table3filt$Locus_type[combo_table3filt$topology == "PM_sister"]), GL=table(combo_table3filt$Locus_type[combo_table3filt$topology == "GL_sister"]), PM_GL=table(combo_table3filt$Locus_type[combo_table3filt$topology == "PM_GL_sister"]))
+chisq_test(loctabTSHi)
+chisq_test(loctabTSHi[,c("PM","GL")])
+chisq_test(loctabTSHi[,c("PM","PM_GL")])
+chisq_test(loctabTSHi[,c("GL","PM_GL")])
+```
+Per gene tests across topologies
+```{r}
+chisq_test(loctabTSHi["CDS",])
+chisq_test(loctabTSHi["intron",])
+chisq_test(loctabTSHi["lnc_RNA",])
+chisq_test(loctabTSHi["other",])
+chisq_test(loctabTSHi["pseudogene",])
+chisq_test(loctabTSHi["unannotated",])
+chisq_test(loctabTSHi["UTR",])
+```
+
+### Prop vs loci, all loci
+
+```{r}
+combo_table3filt2 <- combo_table3filt
+combo_table3filt2$Locus_type <- as.factor(combo_table3filt2$Locus_type)
+levels(combo_table3filt2$Locus_type)[3] <- "lncR"
+levels(combo_table3filt2$Locus_type)[5] <- "PsG"
+levels(combo_table3filt2$Locus_type)[6] <- "NA"
+
+p4_1 <- ggplot(combo_table3filt2, aes(x=topology, y=No_of_taxa)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_2 <- ggplot(combo_table3filt2, aes(x=topology, y=Glires_fraction)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_3 <- ggplot(combo_table3filt2, aes(x=topology, y=Primatomorpha_fraction)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_4 <- ggplot(combo_table3filt2, aes(x=topology, y=Alignment_length)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_5 <- ggplot(combo_table3filt2, aes(x=topology, y=Missing_percent)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_6 <- ggplot(combo_table3filt2, aes(x=topology, y=Proportion_variable_sites)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_7 <- ggplot(combo_table3filt2, aes(x=topology, y=Proportion_parsimony_informative)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_8 <- ggplot(combo_table3filt2, aes(x=topology, y=GC_content)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_9 <- ggplot(combo_table3filt2, aes(x=topology, y=Saturation_slope)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_10 <- ggplot(combo_table3filt2, aes(x=topology, y=Model_fit_SDPD)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p4_11 <- ggplot(na.omit(combo_table3filt2), aes(x=topology, fill=topology)) + 
+  geom_bar(color="black", show.legend = F) +
+  scale_x_discrete(labels=c("P","G","PG")) +
+  facet_wrap(.~Locus_type, nrow=1,scales = "free_y") +
+  scale_fill_manual(values = cls1) +
+  theme_bw()
+```
+
+```{r, fig.height=6.67, fig.width=10.67}
+grid.arrange(p4_1,p4_2,p4_3,p4_4,
+             p4_5,p4_6,p4_7,p4_8,
+             p4_9,p4_10,p4_11,
+             layout_matrix=cbind(c(1,4,5),
+                                 c(2,6,11),
+                                 c(3,7,11),
+                                 c(8,9,10)))
+
+#1024 640
+```
+
+## Treeshrew signal figures cont.
+
+### Concat data prep and stats 
+
+```{r}
+dLnLtabTSHc <- read.csv("data_analysis_revisions/combined_iqtree_treeshrew_dLnLs_concat2.csv", header = F, stringsAsFactors = F)
+dLnLtabTSHc$V1 <- paste0 (dLnLtabTSHc$V1, ".fasta")
+
+screen_data_filtTSHc <- screen_data[match (dLnLtabTSHc$V1,screen_data$locname ),]
+
+amatabfiltTSHc <- amatab[match (dLnLtabTSHc$V1,amatab$Alignment_name ),]
+
+#filter out low BLC loci
+dLnLtabTSHc <- dLnLtabTSHc[screen_data_filtTSHc$Rsq>0.25,]
+```
+
+###check summed likelihood
+```{r}
+apply(dLnLtabTSHc[,2:4], 2, sum, na.rm=T)
+```
+
+
+```{r}
+AUtestTSHc <- relltest(na.omit(as.matrix(dLnLtabTSHc[,c(2:4)])),nb=1000)
+AUtestTSHcsummary <- summary(AUtestTSHc)
+AUtestTSHcsummary
+```
+
+```{r}
+AUtestTSHcsummaryAttr <- attributes(AUtestTSHcsummary)
+AUtestTSHcpval <- 1-AUtestTSHcsummaryAttr$table$value[which.max(AUtestTSHcsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestTSHcpval
+```
+
+###rescale data
+```{r}
+dLnLtabTSHcr <- dLnLtabTSHc
+dLnLtabTSHcr[,2] <- as.numeric(dLnLtabTSHcr[,2])
+dLnLtabTSHcr[,3] <- as.numeric(dLnLtabTSHcr[,3])
+dLnLtabTSHcr[,4] <- as.numeric(dLnLtabTSHcr[,4])
+dLnLtabTSHcr <- na.omit(dLnLtabTSHcr)
+dLnLtabTSHcr[,2:4] <- (dLnLtabTSHcr[,2:4] - apply(dLnLtabTSHcr[,2:4], 1, min))/amatabfiltTSHc$Alignment_length
+colnames(dLnLtabTSHcr) <- c("locname","PM_sister","GL_sister","PM_GL_sister")
+```
+
+###check signal strength mean and stdev
+```{r}
+mean(apply(dLnLtabTSHcr[,2:4], 1 , max, na.rm=T) - apply(dLnLtabTSHcr[,2:4], 1 , min, na.rm=T))
+sd(apply(dLnLtabTSHcr[,2:4], 1 , max, na.rm=T) - apply(dLnLtabTSHcr[,2:4], 1 , min, na.rm=T))
+```
+
+###obtain outliers/nonoutliers subsets
+```{r}
+dLnLtabTSHcrmax <- apply(dLnLtabTSHcr[,2:4], 1, max)
+dLnLtabTSHcrOUT <- dLnLtabTSHcr[order(dLnLtabTSHcrmax, decreasing = T),][1:1000,]
+dLnLtabTSHcrNONOUT <- dLnLtabTSHcr[!(dLnLtabTSHcr$locname %in% dLnLtabTSHcrOUT$locname),]
+```
+
+Output locus names for the subsets to be analyzed in SVDQ. Set eval to TRUE
+```{r}
+write(dLnLtabTSHcr$locname, "locnamesTSHc.txt")
+write(dLnLtabTSHcrOUT$locname, "locnamesTSHcOUT.txt")
+write(dLnLtabTSHcrNONOUT$locname, "locnamesTSHcNONOUT.txt")
+```
+
+### check summed likelihoods for the outlier / non outlier subsets
+```{r}
+apply(dLnLtabTSHc[dLnLtabTSHc$V1 %in% dLnLtabTSHcrOUT$locname,c(2:4)], 2, sum, na.rm=T)
+apply(dLnLtabTSHc[dLnLtabTSHc$V1 %in% dLnLtabTSHcrNONOUT$locname,c(2:4)], 2, sum, na.rm=T)
+```
+
+###AU tests for outliers/nonoutliers
+
+```{r}
+AUtestTSHcNONOUT <- relltest(na.omit(as.matrix(dLnLtabTSHc[dLnLtabTSHc$V1 %in% dLnLtabTSHcrNONOUT$locname,c(2:4)])),nb=1000)
+AUtestTSHcNONOUTsummary <- summary(AUtestTSHcNONOUT)
+AUtestTSHcNONOUTsummary
+```
+
+```{r}
+AUtestTSHcOUT <- relltest(na.omit(as.matrix(dLnLtabTSHc[dLnLtabTSHc$V1 %in% dLnLtabTSHcrOUT$locname,c(2:4)])),nb=1000)
+AUtestTSHcOUTsummary <- summary(AUtestTSHcOUT)
+AUtestTSHcOUTsummary
+```
+
+```{r}
+AUtestTSHcNONOUTsummaryAttr <- attributes(AUtestTSHcNONOUTsummary)
+AUtestTSHcNONOUTpval <- 1-AUtestTSHcNONOUTsummaryAttr$table$value[which.max(AUtestTSHcNONOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestTSHcNONOUTpval
+```
+
+```{r}
+AUtestTSHcOUTsummaryAttr <- attributes(AUtestTSHcOUTsummary)
+AUtestTSHcOUTpval <- 1-AUtestTSHcOUTsummaryAttr$table$value[which.max(AUtestTSHcOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestTSHcOUTpval
+```
+
+
+###outliers plots
+```{r}
+dLnLtabTSHcrOUTp3_2 <- pre_outlier_plot_df(dLnLtabTSHcrOUT)
+p3_2 <- ggplot(dLnLtabTSHcrOUTp3_2, aes(x=PM_GL_sister, y=PM_sister, z=GL_sister, color=density, fill=density)) +
+  axes_3D(theta=theta, phi=phi) +
+  stat_3D(theta=theta, phi=phi, shape=21,size=3) +
+  axis_labs_3D(theta=theta, phi=phi, size=5,
+               hjust=c(1,1,1.2,1.2,1.2,1.2),
+               vjust=c(-.5,-.5,-.2,-.2,1.2,1.2)) +
+  scale_fill_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  scale_color_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  theme_void() + theme(legend.position = c(0.8, 0.5))
+```
+
+###group loci by favored topology
+```{r}
+dLnLtabTSHcrF <- get_favoring_lnl_loci(dLnLtabTSHcr)
+dLnLtabTSHcrFfilt <- na.omit(dLnLtabTSHcrF)
+#subset outliers
+dLnLtabTSHcrFfiltOUT <- dLnLtabTSHcrFfilt[dLnLtabTSHcrFfilt$locname %in% dLnLtabTSHcrOUT$locname,]
+dLnLtabTSHcrFfiltNONOUT <- dLnLtabTSHcrFfilt[dLnLtabTSHcrFfilt$locname %in% dLnLtabTSHcrNONOUT$locname,]
+
+```
+
+###counts and stats
+```{r}
+table(dLnLtabTSHcrFfilt$topology)
+chisq_all_TSHc <- chisq_test(as.data.frame(table(dLnLtabTSHcrFfilt$topology))[,2])
+chisq_all_TSHc
+Nloci_all_TSHc <- chisq_all_TSHc$p
+```
+
+
+```{r}
+table(dLnLtabTSHcrFfiltOUT$topology)
+chisq_out_TSHc <- chisq_test(as.data.frame(table(dLnLtabTSHcrFfiltOUT$topology))[,2])
+chisq_out_TSHc
+Nloci_out_TSHc <- chisq_out_TSHc$p
+```
+
+```{r}
+table(dLnLtabTSHcrFfiltNONOUT$topology)
+chisq_nonout_TSHc <- chisq_test(as.data.frame(table(dLnLtabTSHcrFfiltNONOUT$topology))[,2])
+chisq_nonout_TSHc
+Nloci_nonout_TSHc <- chisq_nonout_TSHc$p
+```
+
+###signal strength
+All
+```{r}
+median(dLnLtabTSHcrFfilt$dLnL[dLnLtabTSHcrFfilt$topology == "PM_sister"])
+median(dLnLtabTSHcrFfilt$dLnL[dLnLtabTSHcrFfilt$topology == "GL_sister"])
+median(dLnLtabTSHcrFfilt$dLnL[dLnLtabTSHcrFfilt$topology == "PM_GL_sister"])
+```
+Outliers
+```{r}
+median(dLnLtabTSHcrFfiltOUT$dLnL[dLnLtabTSHcrFfiltOUT$topology == "PM_sister"])
+median(dLnLtabTSHcrFfiltOUT$dLnL[dLnLtabTSHcrFfiltOUT$topology == "GL_sister"])
+median(dLnLtabTSHcrFfiltOUT$dLnL[dLnLtabTSHcrFfiltOUT$topology == "PM_GL_sister"])
+```
+Non-outliers
+```{r}
+median(dLnLtabTSHcrFfiltNONOUT$dLnL[dLnLtabTSHcrFfiltNONOUT$topology == "PM_sister"])
+median(dLnLtabTSHcrFfiltNONOUT$dLnL[dLnLtabTSHcrFfiltNONOUT$topology == "GL_sister"])
+median(dLnLtabTSHcrFfiltNONOUT$dLnL[dLnLtabTSHcrFfiltNONOUT$topology == "PM_GL_sister"])
+```
+Tests
+```{r}
+lnLsignal_all_tshConcat <- run_custom_tests_unpaired(dLnLtabTSHcrFfilt, "dLnL")
+lnLsignal_out_tshConcat <- run_custom_tests_unpaired(dLnLtabTSHcrFfiltOUT,"dLnL")
+lnLsignal_nonout_tshConcat <- run_custom_tests_unpaired(dLnLtabTSHcrFfiltNONOUT, "dLnL")
+```
+
+###counts and signal strength figures
+```{r}
+dLnLtabTSHcrFfiltplot <- dLnLtabTSHcrFfilt
+dLnLtabTSHcrFfiltplot$type <- rep("All", length(dLnLtabTSHcrFfilt$locname))
+dLnLtabTSHcrFfiltplot <- rbind(dLnLtabTSHcrFfiltplot, cbind(dLnLtabTSHcrFfiltOUT, type=rep("Outliers", length(dLnLtabTSHcrFfiltOUT$locname))))
+dLnLtabTSHcrFfiltplot <- rbind(dLnLtabTSHcrFfiltplot, cbind(dLnLtabTSHcrFfiltNONOUT, type=rep("Non-outliers", length(dLnLtabTSHcrFfiltNONOUT$locname))))
+
+dLnLtabTSHcrFfiltplot2 <- data.frame(topology=rep(c("PM_sister", "GL_sister","PM_GL_sister"),3),
+                            type=c(rep("All",3), rep("Outliers",3),rep("Non-outliers",3)),
+                            lnL=c(sum(dLnLtabTSHc$V2),
+                                  sum(dLnLtabTSHc$V3),
+                                  sum(dLnLtabTSHc$V4),
+                                  sum(dLnLtabTSHc$V2[dLnLtabTSHc$V1 %in% dLnLtabTSHcrOUT$locname]),
+                                  sum(dLnLtabTSHc$V3[dLnLtabTSHc$V1 %in% dLnLtabTSHcrOUT$locname]),
+                                  sum(dLnLtabTSHc$V4[dLnLtabTSHc$V1 %in% dLnLtabTSHcrOUT$locname]),
+                                  sum(dLnLtabTSHc$V2[dLnLtabTSHc$V1 %in% dLnLtabTSHcrNONOUT$locname]),
+                                  sum(dLnLtabTSHc$V3[dLnLtabTSHc$V1 %in% dLnLtabTSHcrNONOUT$locname]),
+                                  sum(dLnLtabTSHc$V4[dLnLtabTSHc$V1 %in% dLnLtabTSHcrNONOUT$locname])
+                                  ))
+dLnLtabTSHcrFfiltplot2$topology <- factor(dLnLtabTSHcrFfiltplot2$topology, levels = c("PM_sister","GL_sister","PM_GL_sister"))
+
+p3_4 <- ggplot(dLnLtabTSHcrFfiltplot, aes(x=topology,fill=topology)) + theme_bw()+
+  geom_bar(show.legend = F,color="black") + scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+p3_6 <- ggplot(dLnLtabTSHcrFfiltplot, aes(x=topology,y=dLnL,fill=topology)) + theme_bw()+
+  geom_violin(color="black") + 
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  scale_y_continuous(trans = "log10") +
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(legend.position = "none") +
+  ylab("log10(ΔlnL)") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+p3_8 <- ggplot(dLnLtabTSHcrFfiltplot2, aes(x=topology,y=lnL, fill=topology)) + theme_bw()+
+  geom_point(show.legend = F,color="black") + 
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+```
+
+
+### plot the triangle figure
+
+```{r, fig.height=9.375, fig.width=21.3}
+grid.arrange(p3_1, p3_2, ncol=2, nrow =1)
+#2048 900
+```
+
+### barplot
+
+```{r, fig.height=10.67, fig.width=12}
+grid.arrange(p3_7, p3_8, p3_3, p3_4, p3_5, p3_6, ncol=2, nrow =3, layout_matrix=cbind(c(1,3,5),c(2,4,6)))
+xyMin=0.005
+xyMax=0.995
+xyOneThird=0.335
+xyTwoThirds=0.665
+xyOneHalf=0.5
+xB = c(xyMin, xyMax, xyMin)
+yB = c(xyOneThird,xyOneThird, xyOneThird)
+grid.polygon(xB,yB,gp=gpar(fill="transparent",lex=2))
+
+yT = c(xyTwoThirds,xyTwoThirds, xyTwoThirds)
+grid.polygon(xB,yT,gp=gpar(fill="transparent",lex=2))
+
+yV = c(xyOneHalf,xyOneHalf, xyOneHalf)
+grid.polygon(yV,xB,gp=gpar(fill="transparent",lex=2))
+
+```
+
+
+### Prop vs loci, all loci - concat
+
+```{r}
+combo_table3$topology <- dLnLtabTSHcrF$topology[match(combo_table3$Alignment_name, dLnLtabTSHcrF$locname)]
+combo_table3$dLnL <- dLnLtabTSHcrF$dLnL[match(combo_table3$Alignment_name, dLnLtabTSHcrF$locname)]
+combo_table3filt <- combo_table3[!is.na(combo_table3$topology),]
+```
+
+```{r}
+combo_table3filt_tests <- combo_table3filt
+colnames(combo_table3filt_tests)[1] <- "locname"
+run_custom_tests_unpaired(combo_table3filt_tests, "No_of_taxa")
+run_custom_tests_unpaired(combo_table3filt_tests, "Glires_fraction")
+run_custom_tests_unpaired(combo_table3filt_tests, "Primatomorpha_fraction")
+run_custom_tests_unpaired(combo_table3filt_tests, "Alignment_length")
+run_custom_tests_unpaired(combo_table3filt_tests, "Missing_percent")
+run_custom_tests_unpaired(combo_table3filt_tests, "Proportion_variable_sites")
+run_custom_tests_unpaired(combo_table3filt_tests, "Proportion_parsimony_informative")
+run_custom_tests_unpaired(combo_table3filt_tests, "Model_fit_SDPD")
+run_custom_tests_unpaired(combo_table3filt_tests, "Saturation_slope")
+run_custom_tests_unpaired(combo_table3filt_tests, "GC_content")
+```
+
+```{r}
+loctabTSHc <- cbind(PM=table(combo_table3filt$Locus_type[combo_table3filt$topology == "PM_sister"]), GL=table(combo_table3filt$Locus_type[combo_table3filt$topology == "GL_sister"]), PM_GL=table(combo_table3filt$Locus_type[combo_table3filt$topology == "PM_GL_sister"]))
+chisq_test(loctabTSHc)
+chisq_test(loctabTSHc[,c("PM","GL")])
+chisq_test(loctabTSHc[,c("PM","PM_GL")])
+chisq_test(loctabTSHc[,c("GL","PM_GL")])
+```
+
+Per gene tests across topologies
+```{r}
+chisq_test(loctabTSHc["CDS",])
+chisq_test(loctabTSHc["intron",])
+chisq_test(loctabTSHc["lnc_RNA",])
+chisq_test(loctabTSHc["other",])
+chisq_test(loctabTSHc["pseudogene",])
+chisq_test(loctabTSHc["unannotated",])
+chisq_test(loctabTSHc["UTR",])
+```
+
+```{r}
+
+combo_table3filt2 <- combo_table3filt
+combo_table3filt2$Locus_type <- as.factor(combo_table3filt2$Locus_type)
+levels(combo_table3filt2$Locus_type)[3] <- "lncR"
+levels(combo_table3filt2$Locus_type)[5] <- "PsG"
+levels(combo_table3filt2$Locus_type)[6] <- "NA"
+
+p7_1 <- ggplot(combo_table3filt2, aes(x=topology, y=No_of_taxa)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_2 <- ggplot(combo_table3filt2, aes(x=topology, y=Glires_fraction)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_3 <- ggplot(combo_table3filt2, aes(x=topology, y=Primatomorpha_fraction)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_4 <- ggplot(combo_table3filt2, aes(x=topology, y=Alignment_length)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_5 <- ggplot(combo_table3filt2, aes(x=topology, y=Missing_percent)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_6 <- ggplot(combo_table3filt2, aes(x=topology, y=Proportion_variable_sites)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_7 <- ggplot(combo_table3filt2, aes(x=topology, y=Proportion_parsimony_informative)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_8 <- ggplot(combo_table3filt2, aes(x=topology, y=GC_content)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_9 <- ggplot(combo_table3filt2, aes(x=topology, y=Saturation_slope)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_10 <- ggplot(combo_table3filt2, aes(x=topology, y=Model_fit_SDPD)) + 
+  geom_violin(show.legend = F) + 
+  scale_x_discrete(labels=c("PM_sister","GL_sister","PM_GL_sister")) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  theme_bw()
+p7_11 <- ggplot(na.omit(combo_table3filt2), aes(x=topology, fill=topology)) + 
+  geom_bar(color="black", show.legend = F) +
+  scale_x_discrete(labels=c("P","G","PG")) +
+  facet_wrap(.~Locus_type, nrow=1,scales = "free_y") +
+  scale_fill_manual(values = cls1) +
+  theme_bw()
+```
+
+```{r, fig.height=6.67, fig.width=10.67}
+grid.arrange(p7_1,p7_2,p7_3,p7_4,
+             p7_5,p7_6,p7_7,p7_8,
+             p7_9,p7_10,p7_11,
+             layout_matrix=cbind(c(1,4,5),
+                                 c(2,6,11),
+                                 c(3,7,11),
+                                 c(8,9,10)))
+
+```
+
+## SCF for treeshrew
+
+### prep the data and stats
+
+```{r}
+scf_tabTSH <- read.csv("data_analysis_revisions/combined_iqtree_treeshrew_scf.csv", header = F, stringsAsFactors = F)
+screen_data_filt_scfTSH <- screen_data[match (scf_tabTSH$V1,screen_data$locname ),]
+scf_tabTSH <- scf_tabTSH[screen_data_filt_scfTSH$Rsq>0.25,]
+
+scf_tabTSH$V2 <- as.numeric(scf_tabTSH$V2)
+scf_tabTSH$V3 <- as.numeric(scf_tabTSH$V3)
+scf_tabTSH$V4 <- as.numeric(scf_tabTSH$V4)
+colnames(scf_tabTSH) <- c("locname", "PM_sister","GL_sister","PM_GL_sister")
+```
+
+```{r}
+scftabTSHF <- get_favoring_lnl_loci(scf_tabTSH, "sCF")
+scftabTSHFfilt <- na.omit(scftabTSHF)
+```
+
+
+```{r}
+table(scftabTSHFfilt$topology)
+chisq_all_TSHsCF <- chisq_test(as.data.frame(table(scftabTSHFfilt$topology))[,2])
+chisq_all_TSHsCF
+Nloci_all_sCF <-  chisq_all_TSHsCF$p
+```
+
+```{r}
+median(scftabTSHFfilt$sCF[scftabTSHFfilt$topology == "PM_sister"])
+median(scftabTSHFfilt$sCF[scftabTSHFfilt$topology == "GL_sister"])
+median(scftabTSHFfilt$sCF[scftabTSHFfilt$topology == "PM_GL_sister"])
+```
+
+```{r}
+sCFsignal_all_tsh <- run_custom_tests_unpaired(scftabTSHFfilt, "sCF")
+```
+
+###sCF data plots
+```{r}
+
+p3_9 <- ggplot(scftabTSHFfilt, aes(x=topology,y=sCF,fill=topology)) + theme_bw()+
+  geom_violin(color="black") + 
+  geom_hline(yintercept=33.3,linetype="dashed",size=0.5) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  scale_y_continuous(breaks=c(0,25,33.3,50,75,100))+
+  scale_fill_manual(values = cls1) +
+  theme(legend.position = "none")
+
+p3_10 <- ggplot(scftabTSHFfilt, aes(x=topology,fill=topology)) + theme_bw()+
+  geom_bar(show.legend = F,color="black") + scale_fill_manual(values = cls1)
+```
+
+### plot the figure
+
+```{r, fig.height=3.54, fig.width=5.7}
+grid.arrange(p3_9, p3_10, ncol=2, nrow =1)
+
+```
+
+
+## Tsh combo tablemap with pvals
+
+```{r}
+pvalsdfTSH <- data.frame(vars=rep(c("Summed_lnL_signal_ind_fit",
+                                 "Summed_lnL_signal_concat_fit",
+                                 "Counts_of_loci_with_lnL_based_support_ind_fit",
+                                 "Counts_of_loci_with_lnL_based_support_ind_concat_fit",
+                                 "Per_locus_lnL_based_signal_strength_ind_fit",
+                                 "Per_locus_lnL_based_signal_strength_concat_fit",
+                                 "Counts_of_loci_with_sCF_based_support",
+                                 "Per_locus_sCF_based_signal_strength"), 3),
+                      dataset=c(rep("all",8), rep("outliers", 8),rep("nonoutliers",8)),
+                      pvals=c(AUtestTSHipval, AUtestTSHcpval,
+                            Nloci_all_TSHi, Nloci_all_TSHc,
+                            lnLsignal_all_tshIND, lnLsignal_all_tshConcat,
+                            Nloci_all_sCF, sCFsignal_all_tsh,
+                            AUtestTSHiOUTpval, AUtestTSHcOUTpval,
+                            Nloci_out_TSHi, Nloci_out_TSHc,
+                            lnLsignal_out_tshIND, lnLsignal_out_tshConcat,
+                            NA, NA,
+                            AUtestTSHiNONOUTpval, AUtestTSHcNONOUTpval,
+                            Nloci_nonout_TSHi, Nloci_nonout_TSHc,
+                            lnLsignal_nonout_tshIND, lnLsignal_nonout_tshConcat,
+                            NA, NA),
+                      hypothesis=factor(c(2,0,2,0,0,2,0,2,
+                                          0,0,0,0,0,0,NA,NA,
+                                          2,0,2,0,0,2,NA,NA),
+                                        labels=c("PM_sister",
+                                                 "PM_GL_sister")))
+pvalsdfTSH$hypothesis[pvalsdfTSH$pvals>0.05] <- NA
+```
+
+```{r, fig.height=3.54, fig.width=6.25}
+ggplot(pvalsdfTSH) +
+  geom_tile(aes(x=dataset, y=vars, fill=hypothesis), color="black") +
+  geom_text(aes(x=dataset, y=vars, label=signif(pvals, digits=3)), size=2.5) +
+  scale_fill_manual(values=cls1[c(1,3)]) +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_text(angle = 33,vjust = 1,hjust=1))
+```
+
+##lnL vs sCF signal
+
+Regression function
+```{r}
+regression2=function(df){
+  reg_fun <- lm(scale(dLnL) ~ scale(sCF), df)
+  slope <- round(coef(reg_fun)[2],3)  
+  intercept <- round(coef(reg_fun)[1],3) 
+  R2 <- round(as.numeric(summary(reg_fun)[8]),3)
+  R2.Adj <- round(as.numeric(summary(reg_fun)[9]),3)
+  pVal <- round(summary(reg_fun)$coefficients[2,4],3)
+  data.frame(slope=slope,intercept=intercept,R2=R2,R2.Adj=R2.Adj,pVal=pVal)
+}
+```
+
+
+###individual fit
+```{r}
+dLnLVSsCFtabTSHi <- merge(dLnLtabTSHirF,scftabTSHF, by="locname")
+
+regressTSHih1 <- regression2(dLnLVSsCFtabTSHi)
+p8_1 <- ggplot(dLnLVSsCFtabTSHi, aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Treeshrew: ΔlnL vs sCF, all") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressTSHih1, inherit.aes=FALSE, parse = T,
+             aes(x = 0.1, y = 10,
+                 label=paste("R^2:",R2)
+             ))
+print("TSH all lnLivssCF")
+print(regressTSHih1)
+
+regressTSHih2 <- regression2(dLnLVSsCFtabTSHi[dLnLVSsCFtabTSHi$locname %in% dLnLtabTSHirOUT$locname,])
+p8_2 <- ggplot(dLnLVSsCFtabTSHi[dLnLVSsCFtabTSHi$locname %in% dLnLtabTSHirOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Treeshrew: ΔlnL vs sCF, outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressTSHih2, inherit.aes=FALSE, parse = T,
+             aes(x = 0.1, y = 20,
+                 label=paste("R^2:",R2)
+             ))
+print("TSH outliers lnLivssCF")
+print(regressTSHih2)
+
+regressTSHih3 <- regression2(dLnLVSsCFtabTSHi[dLnLVSsCFtabTSHi$locname %in% dLnLtabTSHirNONOUT$locname,])
+p8_3 <- ggplot(dLnLVSsCFtabTSHi[dLnLVSsCFtabTSHi$locname %in% dLnLtabTSHirNONOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Treeshrew: ΔlnL vs sCF, non-outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressTSHih3, inherit.aes=FALSE, parse = T,
+             aes(x = 0.015, y = 10,
+                 label=paste("R^2:",R2)
+             ))
+print("TSH non-outliers lnLivssCF")
+print(regressTSHih3)
+
+```
+###concat fit
+```{r}
+dLnLVSsCFtabTSHc <- merge(dLnLtabTSHcrF,scftabTSHF, by="locname")
+
+regressTSHch1 <- regression2(dLnLVSsCFtabTSHc)
+p8_4 <- ggplot(dLnLVSsCFtabTSHc, aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Treeshrew: ΔlnL vs sCF, all") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressTSHch1, inherit.aes=FALSE, parse = T,
+             aes(x = 0.03, y = 20,
+                 label=paste("R^2:",R2)
+             ))
+print("TSH all lnLcvssCF")
+print(regressTSHch1)
+
+regressTSHch2 <- regression2(dLnLVSsCFtabTSHc[dLnLVSsCFtabTSHc$locname %in% dLnLtabTSHcrOUT$locname,])
+p8_5 <- ggplot(dLnLVSsCFtabTSHc[dLnLVSsCFtabTSHc$locname %in% dLnLtabTSHcrOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Treeshrew: ΔlnL vs sCF, outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressTSHch2, inherit.aes=FALSE, parse = T,
+             aes(x = 0.03, y = 20,
+                 label=paste("R^2:",R2)
+             ))
+print("TSH outliers lnLcvssCF")
+print(regressTSHch2)
+
+regressTSHch3 <- regression2(dLnLVSsCFtabTSHc[dLnLVSsCFtabTSHc$locname %in% dLnLtabTSHcrNONOUT$locname,])
+p8_6 <- ggplot(dLnLVSsCFtabTSHc[dLnLVSsCFtabTSHc$locname %in% dLnLtabTSHcrNONOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Treeshrew: ΔlnL vs sCF, non-outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressTSHch3, inherit.aes=FALSE, parse = T,
+             aes(x = 0.005, y = 50,
+                 label=paste("R^2:",R2)
+             ))
+print("TSH non-outliers lnLcvssCF")
+print(regressTSHch3)
+
+```
+
+```{r, fig.height=8, fig.width=12}
+grid.arrange(p8_1,p8_2,p8_3,
+             p8_4,p8_5,p8_6,
+             nrow=2, ncol=3)
+```
+
+## Primates signal
+
+### Inidividual fit data prep
+
+```{r}
+dLnLtabPRIi <- read.csv("data_analysis_revisions/combined_iqtree_primates_dLnLs.csv", header = F, stringsAsFactors = F)
+
+screen_data_filtPRIi <- screen_data[match (dLnLtabPRIi$V1,screen_data$locname ),]
+
+amatabfiltPRIi <- amatab[match (dLnLtabPRIi$V1,amatab$Alignment_name ),]
+
+dLnLtabPRIi <- dLnLtabPRIi[screen_data_filtPRIi$Rsq>0.25,]
+```
+
+###check summed likelihood
+```{r}
+apply(dLnLtabPRIi[,2:4], 2, sum, na.rm=T)
+```
+
+### AU test
+
+```{r}
+AUtestPRIi <- relltest(na.omit(as.matrix(dLnLtabPRIi[,c(2:4)])),nb=1000)
+AUtestPRIisummary <- summary(AUtestPRIi)
+AUtestPRIisummary
+```
+
+```{r}
+AUtestPRIisummaryAttr <- attributes(AUtestPRIisummary)
+AUtestPRIipval <- 1-AUtestPRIisummaryAttr$table$value[which.max(AUtestPRIisummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestPRIipval
+```
+
+
+###rescale data
+
+```{r}
+dLnLtabPRIir <- dLnLtabPRIi
+dLnLtabPRIir[,2] <- as.numeric(dLnLtabPRIir[,2])
+dLnLtabPRIir[,3] <- as.numeric(dLnLtabPRIir[,3])
+dLnLtabPRIir[,4] <- as.numeric(dLnLtabPRIir[,4])
+dLnLtabPRIir <- na.omit(dLnLtabPRIir)
+dLnLtabPRIir[,2:4] <- (dLnLtabPRIir[,2:4] - apply(dLnLtabPRIir[,2:4], 1, min))/amatabfiltPRIi$Alignment_length
+colnames(dLnLtabPRIir) <- c("locname","Monophyletic","altNNI1","altNNI2")
+```
+
+###get outlier/nonoutlier data
+
+```{r}
+dLnLtabPRIirmax <- apply(dLnLtabPRIir[,2:4], 1, max)
+dLnLtabPRIirOUT <- dLnLtabPRIir[order(dLnLtabPRIirmax, decreasing = T),][1:1000,]
+dLnLtabPRIirNONOUT <- dLnLtabPRIir[!(dLnLtabPRIir$locname %in% dLnLtabPRIirOUT$locname),]
+
+```
+
+### check summed likelihoods for the outlier / non outlier subsets
+```{r}
+apply(dLnLtabPRIi[dLnLtabPRIi$V1 %in% dLnLtabPRIirOUT$locname,c(2:4)], 2, sum, na.rm=T)
+apply(dLnLtabPRIi[dLnLtabPRIi$V1 %in% dLnLtabPRIirNONOUT$locname,c(2:4)], 2, sum, na.rm=T)
+```
+
+
+###AU tests
+```{r}
+AUtestPRIiNONOUT <- relltest(na.omit(as.matrix(dLnLtabPRIi[dLnLtabPRIi$V1 %in% dLnLtabPRIirNONOUT$locname,c(2:4)])),nb=1000)
+AUtestPRIiNONOUTsummary <- summary(AUtestPRIiNONOUT)
+AUtestPRIiNONOUTsummary
+```
+
+```{r}
+AUtestPRIiOUT <- relltest(na.omit(as.matrix(dLnLtabPRIi[dLnLtabPRIi$V1 %in% dLnLtabPRIirOUT$locname,c(2:4)])),nb=1000)
+AUtestPRIiOUTsummary <- summary(AUtestPRIiOUT)
+AUtestPRIiOUTsummary
+```
+
+```{r}
+AUtestPRIiNONOUTsummaryAttr <- attributes(AUtestPRIiNONOUTsummary)
+AUtestPRIiNONOUTpval <- 1-AUtestPRIiNONOUTsummaryAttr$table$value[which.max(AUtestPRIiNONOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestPRIiNONOUTpval
+```
+
+```{r}
+AUtestPRIiOUTsummaryAttr <- attributes(AUtestPRIiOUTsummary)
+AUtestPRIiOUTpval <- 1-AUtestPRIiOUTsummaryAttr$table$value[which.max(AUtestPRIiOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestPRIiOUTpval
+```
+
+
+###outlier figure
+```{r}
+dLnLtabPRIirOUTp5_1 <- pre_outlier_plot_df(dLnLtabPRIirOUT)
+
+p5_1 <- ggplot(dLnLtabPRIirOUTp5_1, aes(x=altNNI2, y=Monophyletic, z=altNNI1, color=density, fill=density)) +
+  axes_3D(theta=theta, phi=phi) +
+  stat_3D(theta=theta, phi=phi, shape=21,size=3) +
+  axis_labs_3D(theta=theta, phi=phi, size=5,
+               hjust=c(1,1,1.2,1.2,1.2,1.2),
+               vjust=c(-.5,-.5,-.2,-.2,1.2,1.2)) +
+  scale_fill_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  scale_color_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  theme_void() + theme(legend.position = c(0.8, 0.5))
+```
+
+###get groups of loci for each topo
+```{r}
+dLnLtabPRIirF <- get_favoring_lnl_loci(dLnLtabPRIir)
+dLnLtabPRIirFfilt <- na.omit(dLnLtabPRIirF)
+```
+
+```{r}
+dLnLtabPRIirFfiltOUT <- dLnLtabPRIirFfilt[dLnLtabPRIirFfilt$locname %in% dLnLtabPRIirOUT$locname,]
+dLnLtabPRIirFfiltNONOUT <- dLnLtabPRIirFfilt[dLnLtabPRIirFfilt$locname %in% dLnLtabPRIirNONOUT$locname,]
+```
+
+###check and test counts
+```{r}
+table(dLnLtabPRIirFfilt$topology)
+chisq_all_PRIi <- chisq_test(as.data.frame(table(dLnLtabPRIirFfilt$topology))[,2])
+chisq_all_PRIi
+Nloci_all_PRIi <-  chisq_all_PRIi$p
+```
+
+
+```{r}
+table(dLnLtabPRIirFfiltOUT$topology)
+chisq_out_PRIi <- chisq_test(as.data.frame(table(dLnLtabPRIirFfiltOUT$topology))[,2])
+chisq_out_PRIi
+Nloci_out_PRIi <-  chisq_out_PRIi$p
+```
+
+```{r}
+table(dLnLtabPRIirFfiltNONOUT$topology)
+chisq_nonout_PRIi <- chisq_test(as.data.frame(table(dLnLtabPRIirFfiltNONOUT$topology))[,2])
+chisq_nonout_PRIi
+Nloci_nonout_PRIi <-  chisq_nonout_PRIi$p
+```
+
+###check and test signal strength
+
+```{r}
+median(dLnLtabPRIirFfilt$dLnL[dLnLtabPRIirFfilt$topology == "Monophyletic"])
+median(dLnLtabPRIirFfilt$dLnL[dLnLtabPRIirFfilt$topology == "altNNI1"])
+median(dLnLtabPRIirFfilt$dLnL[dLnLtabPRIirFfilt$topology == "altNNI2"])
+```
+
+```{r}
+median(dLnLtabPRIirFfiltOUT$dLnL[dLnLtabPRIirFfiltOUT$topology == "Monophyletic"])
+median(dLnLtabPRIirFfiltOUT$dLnL[dLnLtabPRIirFfiltOUT$topology == "altNNI1"])
+median(dLnLtabPRIirFfiltOUT$dLnL[dLnLtabPRIirFfiltOUT$topology == "altNNI2"])
+```
+
+```{r}
+median(dLnLtabPRIirFfiltNONOUT$dLnL[dLnLtabPRIirFfiltNONOUT$topology == "Monophyletic"])
+median(dLnLtabPRIirFfiltNONOUT$dLnL[dLnLtabPRIirFfiltNONOUT$topology == "altNNI1"])
+median(dLnLtabPRIirFfiltNONOUT$dLnL[dLnLtabPRIirFfiltNONOUT$topology == "altNNI2"])
+```
+
+```{r}
+lnLsignal_PRIi <- run_custom_tests_unpaired(dLnLtabPRIirFfilt, "dLnL")
+lnLsignal_PRIiOUT <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUT,"dLnL")
+lnLsignal_PRIiNONOUT <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUT, "dLnL")
+```
+
+###signal barplots
+```{r}
+dLnLtabPRIirFfiltplot <- dLnLtabPRIirFfilt
+dLnLtabPRIirFfiltplot$type <- rep("All", length(dLnLtabPRIirFfilt$locname))
+dLnLtabPRIirFfiltplot <- rbind(dLnLtabPRIirFfiltplot, cbind(dLnLtabPRIirFfiltOUT, type=rep("Outliers", length(dLnLtabPRIirFfiltOUT$locname))))
+dLnLtabPRIirFfiltplot <- rbind(dLnLtabPRIirFfiltplot, cbind(dLnLtabPRIirFfiltNONOUT, type=rep("Non-outliers", length(dLnLtabPRIirFfiltNONOUT$locname))))
+
+dLnLtabPRIirFfiltplot2 <- data.frame(topology=rep(c("Monophyletic", "altNNI1","altNNI2"),3),
+                            type=c(rep("All",3), rep("Outliers",3),rep("Non-outliers",3)),
+                            lnL=c(sum(dLnLtabPRIi$V2),
+                                  sum(dLnLtabPRIi$V3),
+                                  sum(dLnLtabPRIi$V4),
+                                  sum(dLnLtabPRIi$V2[dLnLtabPRIi$V1 %in% dLnLtabPRIirOUT$locname]),
+                                  sum(dLnLtabPRIi$V3[dLnLtabPRIi$V1 %in% dLnLtabPRIirOUT$locname]),
+                                  sum(dLnLtabPRIi$V4[dLnLtabPRIi$V1 %in% dLnLtabPRIirOUT$locname]),
+                                  sum(dLnLtabPRIi$V2[dLnLtabPRIi$V1 %in% dLnLtabPRIirNONOUT$locname]),
+                                  sum(dLnLtabPRIi$V3[dLnLtabPRIi$V1 %in% dLnLtabPRIirNONOUT$locname]),
+                                  sum(dLnLtabPRIi$V4[dLnLtabPRIi$V1 %in% dLnLtabPRIirNONOUT$locname])
+                                  ))
+dLnLtabPRIirFfiltplot2$topology <- factor(dLnLtabPRIirFfiltplot2$topology, levels = c("Monophyletic", "altNNI1","altNNI2"))
+
+
+p5_3 <- ggplot(dLnLtabPRIirFfiltplot, aes(x=topology,fill=topology)) + theme_bw()+
+  geom_bar(show.legend = F,color="black") + scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+
+p5_5 <- ggplot(dLnLtabPRIirFfiltplot, aes(x=topology,y=dLnL,fill=topology)) + theme_bw()+
+  geom_violin(color="black") + 
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  scale_y_continuous(trans = "log10") +
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(legend.position = "none") +
+  ylab("log10(ΔlnL)") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+
+p5_7 <- ggplot(dLnLtabPRIirFfiltplot2, aes(x=topology,y=lnL, fill=topology)) + theme_bw()+
+  geom_point(show.legend = F,color="black") + 
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+```
+
+### Concat data prep and stats 
+
+```{r}
+dLnLtabPRIc <- read.csv("data_analysis_revisions/combined_iqtree_primates_dLnLs_concat2.csv", header = F, stringsAsFactors = F)
+dLnLtabPRIc$V1 <- paste0 (dLnLtabPRIc$V1, ".fasta")
+
+screen_data_filtPRIc <- screen_data[match (dLnLtabPRIc$V1,screen_data$locname ),]
+
+amatabfiltPRIc <- amatab[match (dLnLtabPRIc$V1,amatab$Alignment_name ),]
+
+dLnLtabPRIc <- dLnLtabPRIc[screen_data_filtPRIc$Rsq>0.25,]
+```
+
+###check summed likelihood
+```{r}
+apply(dLnLtabPRIc[,2:4], 2, sum, na.rm=T)
+```
+
+###AU test
+```{r}
+AUtestPRIc <- relltest(na.omit(as.matrix(dLnLtabPRIc[,c(2:4)])),nb=1000)
+AUtestPRIcsummary <- summary(AUtestPRIc)
+AUtestPRIcsummary
+```
+
+```{r}
+AUtestPRIcsummaryAttr <- attributes(AUtestPRIcsummary)
+AUtestPRIcpval <- 1-AUtestPRIcsummaryAttr$table$value[which.max(AUtestPRIcsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestPRIcpval
+```
+
+###prep rescaled data
+```{r}
+dLnLtabPRIcr <- dLnLtabPRIc
+dLnLtabPRIcr[,2] <- as.numeric(dLnLtabPRIcr[,2])
+dLnLtabPRIcr[,3] <- as.numeric(dLnLtabPRIcr[,3])
+dLnLtabPRIcr[,4] <- as.numeric(dLnLtabPRIcr[,4])
+dLnLtabPRIcr <- na.omit(dLnLtabPRIcr)
+dLnLtabPRIcr[,2:4] <- (dLnLtabPRIcr[,2:4] - apply(dLnLtabPRIcr[,2:4], 1, min))/amatabfiltPRIc$Alignment_length
+colnames(dLnLtabPRIcr) <- c("locname","Monophyletic","altNNI1","altNNI2")
+```
+
+###get outlier/nonoutlier subsets
+```{r}
+dLnLtabPRIcrmax <- apply(dLnLtabPRIcr[,2:4], 1, max)
+dLnLtabPRIcrOUT <- dLnLtabPRIcr[order(dLnLtabPRIcrmax, decreasing = T),][1:1000,]
+dLnLtabPRIcrNONOUT <- dLnLtabPRIcr[!(dLnLtabPRIcr$locname %in% dLnLtabPRIcrOUT$locname),]
+```
+
+### check summed likelihoods for the outlier / non outlier subsets
+```{r}
+apply(dLnLtabPRIc[dLnLtabPRIc$V1 %in% dLnLtabPRIcrOUT$locname,c(2:4)], 2, sum, na.rm=T)
+apply(dLnLtabPRIc[dLnLtabPRIc$V1 %in% dLnLtabPRIcrNONOUT$locname,c(2:4)], 2, sum, na.rm=T)
+```
+
+
+###AU tests for subsets
+
+```{r}
+AUtestPRIcNONOUT <- relltest(na.omit(as.matrix(dLnLtabPRIc[dLnLtabPRIc$V1 %in% dLnLtabPRIcrNONOUT$locname,c(2:4)])),nb=1000)
+AUtestPRIcNONOUTsummary <- summary(AUtestPRIcNONOUT)
+AUtestPRIcNONOUTsummary
+```
+
+```{r}
+AUtestPRIcOUT <- relltest(na.omit(as.matrix(dLnLtabPRIc[dLnLtabPRIc$V1 %in% dLnLtabPRIcrOUT$locname,c(2:4)])),nb=1000)
+AUtestPRIcOUTsummary <- summary(AUtestPRIcOUT)
+AUtestPRIcOUTsummary
+```
+
+```{r}
+AUtestPRIcNONOUTsummaryAttr <- attributes(AUtestPRIcNONOUTsummary)
+AUtestPRIcNONOUTpval <- 1-AUtestPRIcNONOUTsummaryAttr$table$value[which.max(AUtestPRIcNONOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestPRIcNONOUTpval
+```
+
+```{r}
+AUtestPRIcOUTsummaryAttr <- attributes(AUtestPRIcOUTsummary)
+AUtestPRIcOUTpval <- 1-AUtestPRIcOUTsummaryAttr$table$value[which.max(AUtestPRIcOUTsummaryAttr$table$value[,"sk.3"]),"sk.3"]
+AUtestPRIcOUTpval
+```
+
+###outlier plots
+```{r}
+dLnLtabPRIcrOUTp5_2 <- pre_outlier_plot_df(dLnLtabPRIcrOUT)
+
+p5_2 <- ggplot(dLnLtabPRIcrOUTp5_2, aes(x=altNNI2, y=Monophyletic, z=altNNI1, color=density, fill=density)) +
+  axes_3D(theta=theta, phi=phi) +
+  stat_3D(theta=theta, phi=phi, shape=21,size=3) +
+  axis_labs_3D(theta=theta, phi=phi, size=5,
+               hjust=c(1,1,1.2,1.2,1.2,1.2),
+               vjust=c(-.5,-.5,-.2,-.2,1.2,1.2)) +
+  scale_fill_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  scale_color_gradientn(colours = viridis(256, option = "D"),trans="log10") +
+  theme_void() + theme(legend.position = c(0.8, 0.5))
+```
+
+###get groups of loci for each topology
+```{r}
+dLnLtabPRIcrF <- get_favoring_lnl_loci(dLnLtabPRIcr)
+dLnLtabPRIcrFfilt <- na.omit(dLnLtabPRIcrF)
+```
+
+```{r}
+dLnLtabPRIcrFfiltOUT <- dLnLtabPRIcrFfilt[dLnLtabPRIcrFfilt$locname %in% dLnLtabPRIcrOUT$locname,]
+dLnLtabPRIcrFfiltNONOUT <- dLnLtabPRIcrFfilt[dLnLtabPRIcrFfilt$locname %in% dLnLtabPRIcrNONOUT$locname,]
+```
+
+###check counts and stats
+```{r}
+table(dLnLtabPRIcrFfilt$topology)
+chisq_all_PRIc <- chisq_test(as.data.frame(table(dLnLtabPRIcrFfilt$topology))[,2])
+chisq_all_PRIc
+Nloci_all_PRIc <- chisq_all_PRIc$p
+```
+
+
+```{r}
+table(dLnLtabPRIcrFfiltOUT$topology)
+chisq_out_PRIc <- chisq_test(as.data.frame(table(dLnLtabPRIcrFfiltOUT$topology))[,2])
+chisq_out_PRIc
+Nloci_out_PRIc <- chisq_out_PRIc$p
+```
+
+
+```{r}
+table(dLnLtabPRIcrFfiltNONOUT$topology)
+chisq_nonout_PRIc <- chisq_test(as.data.frame(table(dLnLtabPRIcrFfiltNONOUT$topology))[,2])
+chisq_nonout_PRIc
+Nloci_nonout_PRIc <- chisq_nonout_PRIc$p
+```
+
+###signal strength tests
+```{r}
+median(dLnLtabPRIcrFfilt$dLnL[dLnLtabPRIcrFfilt$topology == "Monophyletic"])
+median(dLnLtabPRIcrFfilt$dLnL[dLnLtabPRIcrFfilt$topology == "altNNI1"])
+median(dLnLtabPRIcrFfilt$dLnL[dLnLtabPRIcrFfilt$topology == "altNNI2"])
+```
+
+```{r}
+median(dLnLtabPRIcrFfiltOUT$dLnL[dLnLtabPRIcrFfiltOUT$topology == "Monophyletic"])
+median(dLnLtabPRIcrFfiltOUT$dLnL[dLnLtabPRIcrFfiltOUT$topology == "altNNI1"])
+median(dLnLtabPRIcrFfiltOUT$dLnL[dLnLtabPRIcrFfiltOUT$topology == "altNNI2"])
+```
+
+```{r}
+median(dLnLtabPRIcrFfiltNONOUT$dLnL[dLnLtabPRIcrFfiltNONOUT$topology == "Monophyletic"])
+median(dLnLtabPRIcrFfiltNONOUT$dLnL[dLnLtabPRIcrFfiltNONOUT$topology == "altNNI1"])
+median(dLnLtabPRIcrFfiltNONOUT$dLnL[dLnLtabPRIcrFfiltNONOUT$topology == "altNNI2"])
+```
+
+```{r}
+lnLsignal_all_PRIc <- run_custom_tests_unpaired(dLnLtabPRIcrFfilt, "dLnL")
+lnLsignal_out_PRIc <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUT,"dLnL")
+lnLsignal_nonout_PRIc <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUT, "dLnL")
+```
+
+
+###signal plots
+```{r}
+dLnLtabPRIcrFfiltplot <- dLnLtabPRIcrFfilt
+dLnLtabPRIcrFfiltplot$type <- rep("All", length(dLnLtabPRIcrFfilt$locname))
+dLnLtabPRIcrFfiltplot <- rbind(dLnLtabPRIcrFfiltplot, cbind(dLnLtabPRIcrFfiltOUT, type=rep("Outliers", length(dLnLtabPRIcrFfiltOUT$locname))))
+dLnLtabPRIcrFfiltplot <- rbind(dLnLtabPRIcrFfiltplot, cbind(dLnLtabPRIcrFfiltNONOUT, type=rep("Non-outliers", length(dLnLtabPRIcrFfiltNONOUT$locname))))
+
+dLnLtabPRIcrFfiltplot2 <- data.frame(topology=rep(c("Monophyletic","altNNI1","altNNI2"),3),
+                            type=c(rep("All",3), rep("Outliers",3),rep("Non-outliers",3)),
+                            lnL=c(sum(dLnLtabPRIc$V2),
+                                  sum(dLnLtabPRIc$V3),
+                                  sum(dLnLtabPRIc$V4),
+                                  sum(dLnLtabPRIc$V2[dLnLtabPRIc$V1 %in% dLnLtabPRIcrOUT$locname]),
+                                  sum(dLnLtabPRIc$V3[dLnLtabPRIc$V1 %in% dLnLtabPRIcrOUT$locname]),
+                                  sum(dLnLtabPRIc$V4[dLnLtabPRIc$V1 %in% dLnLtabPRIcrOUT$locname]),
+                                  sum(dLnLtabPRIc$V2[dLnLtabPRIc$V1 %in% dLnLtabPRIcrNONOUT$locname]),
+                                  sum(dLnLtabPRIc$V3[dLnLtabPRIc$V1 %in% dLnLtabPRIcrNONOUT$locname]),
+                                  sum(dLnLtabPRIc$V4[dLnLtabPRIc$V1 %in% dLnLtabPRIcrNONOUT$locname])
+                                  ))
+dLnLtabPRIcrFfiltplot2$topology <- factor(dLnLtabPRIcrFfiltplot2$topology, levels = c("Monophyletic","altNNI1","altNNI2"))
+
+
+p5_4 <- ggplot(dLnLtabPRIcrFfiltplot, aes(x=topology,fill=topology)) + theme_bw()+
+  geom_bar(show.legend = F,color="black") + scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+p5_6 <- ggplot(dLnLtabPRIcrFfiltplot, aes(x=topology,y=dLnL,fill=topology)) + theme_bw()+
+  geom_violin(show.legend = F,color="black") + 
+  stat_summary(show.legend = F,fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(show.legend = F,fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  scale_y_continuous(trans = "log10") +
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  #theme(legend.position = "none") +
+  ylab("log10(ΔlnL)") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+p5_8 <- ggplot(dLnLtabPRIcrFfiltplot2, aes(x=topology,y=lnL, fill=topology)) + theme_bw()+
+  geom_point(show.legend = F,color="black") + 
+  scale_fill_manual(values = cls1) +
+  facet_wrap(.~type, nrow=1, ncol=3, scales="free_y") +
+  theme(axis.text.x = element_text(size=12,angle = 90, vjust = 0.5, hjust=1),
+        axis.text.y = element_text(size=12),
+        strip.text.x = element_text(size = 12))
+
+```
+
+
+### plot the triangle figure
+
+```{r, fig.height=9.375, fig.width=21.3}
+grid.arrange(p5_1, p5_2, ncol=2, nrow =1)
+#2048 900
+```
+
+### barplot
+
+```{r, fig.height=10.67, fig.width=12}
+grid.arrange(p5_7, p5_8, p5_3, p5_4, p5_5, p5_6, ncol=2, nrow =3, layout_matrix=cbind(c(1,3,5),c(2,4,6)))
+xyMin=0.005
+xyMax=0.995
+xyOneThird=0.335
+xyTwoThirds=0.665
+xyOneHalf=0.5
+xB = c(xyMin, xyMax, xyMin)
+yB = c(xyOneThird,xyOneThird, xyOneThird)
+grid.polygon(xB,yB,gp=gpar(fill="transparent",lex=2))
+
+yT = c(xyTwoThirds,xyTwoThirds, xyTwoThirds)
+grid.polygon(xB,yT,gp=gpar(fill="transparent",lex=2))
+
+yV = c(xyOneHalf,xyOneHalf, xyOneHalf)
+grid.polygon(yV,xB,gp=gpar(fill="transparent",lex=2))
+
+```
+
+## SCF for primates
+
+### prep the data and stats
+
+```{r}
+scf_tabPRI <- read.csv("data_analysis_revisions/combined_iqtree_primates_scf.csv", header = F, stringsAsFactors = F)
+screen_data_filt_scfPRI <- screen_data[match (scf_tabPRI$V1,screen_data$locname ),]
+scf_tabPRI <- scf_tabPRI[screen_data_filt_scfPRI$Rsq>0.25,]
+
+scf_tabPRI$V2 <- as.numeric(scf_tabPRI$V2)
+scf_tabPRI$V3 <- as.numeric(scf_tabPRI$V3)
+scf_tabPRI$V4 <- as.numeric(scf_tabPRI$V4)
+colnames(scf_tabPRI) <- c("locname", "Monophyletic","altNNI1","altNNI2")
+
+```
+
+```{r}
+scftabPRIF <- get_favoring_lnl_loci(scf_tabPRI, "sCF")
+scftabPRIFfilt <- na.omit(scftabPRIF)
+```
+
+```{r}
+table(scftabPRIFfilt$topology)
+chisq_all_PRIsCF <- chisq_test(as.data.frame(table(scftabPRIFfilt$topology))[,2])
+chisq_all_PRIsCF
+Nloci_all_PRIsCF <- chisq_all_PRIsCF$p
+```
+
+```{r}
+median(scftabPRIFfilt$sCF[scftabPRIFfilt$topology == "Monophyletic"])
+median(scftabPRIFfilt$sCF[scftabPRIFfilt$topology == "altNNI1"])
+median(scftabPRIFfilt$sCF[scftabPRIFfilt$topology == "altNNI2"])
+```
+
+```{r}
+sCFsignal_all_PRI <- run_custom_tests_unpaired(scftabPRIFfilt, "sCF")
+```
+
+
+```{r}
+
+p5_9 <- ggplot(scftabPRIFfilt, aes(x=topology,y=sCF,fill=topology)) + theme_bw()+
+  geom_violin(show.legend = F, color="black") + 
+  geom_hline(yintercept=33.3,linetype="dashed",size=0.5) +
+  stat_summary(show.legend = F,fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25) +
+  stat_summary(show.legend = F,fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5) +
+  scale_y_continuous(breaks=c(0,25,33.3,50,75,100))+
+  scale_fill_manual(values = cls1)
+
+p5_10 <- ggplot(scftabPRIFfilt, aes(x=topology,fill=topology)) + theme_bw()+
+  geom_bar(show.legend = F,color="black") + scale_fill_manual(values = cls1)
+```
+
+### plot the figure
+
+```{r, fig.height=3.54, fig.width=5.7}
+grid.arrange(p5_9, p5_10, ncol=2, nrow =1)
+
+```
+
+
+## Tsh combo tablemap with pvals
+
+```{r}
+pvalsdfPRI <- data.frame(vars=rep(c("Summed_lnL_signal_ind_fit",
+                                 "Summed_lnL_signal_concat_fit",
+                                 "Counts_of_loci_with_lnL_based_support_ind_fit",
+                                 "Counts_of_loci_with_lnL_based_support_ind_concat_fit",
+                                 "Per_locus_lnL_based_signal_strength_ind_fit",
+                                 "Per_locus_lnL_based_signal_strength_concat_fit",
+                                 "Counts_of_loci_with_sCF_based_support",
+                                 "Per_locus_sCF_based_signal_strength"), 3),
+                      dataset=c(rep("all",8), rep("outliers", 8),rep("nonoutliers",8)),
+                      pvals=c(AUtestPRIipval, AUtestPRIcpval,
+                            Nloci_all_PRIi, Nloci_all_PRIc,
+                            lnLsignal_PRIi, lnLsignal_all_PRIc,
+                            Nloci_all_PRIsCF, sCFsignal_all_PRI,
+                            AUtestPRIiOUTpval, AUtestPRIcOUTpval,
+                            Nloci_out_PRIi, Nloci_out_PRIc,
+                            lnLsignal_PRIiOUT, lnLsignal_out_PRIc,
+                            NA, NA,
+                            AUtestPRIiNONOUTpval, AUtestPRIcNONOUTpval,
+                            Nloci_nonout_PRIi, Nloci_nonout_PRIc,
+                            lnLsignal_PRIiNONOUT, lnLsignal_nonout_PRIc,
+                            NA, NA),
+                      hypothesis=factor(c(0,0,0,0,0,0,0,0,
+                                          0,0,0,0,2,0,NA,NA,
+                                          0,0,0,0,0,0,NA,NA),
+                                        labels=c("Monophyletic","altNNI2")))
+pvalsdfPRI$hypothesis[pvalsdfPRI$pvals>0.05] <- NA
+pvalsdfPRI$pvals <- signif(pvalsdfPRI$pvals,3)
+pvalsdfPRI$pvals[!grepl("Summed_", pvalsdfPRI$vars) & !is.na(pvalsdfPRI$pvals) & pvalsdfPRI$pvals == 0] <- "<2.2e-308"
+
+```
+
+```{r, fig.height=3.54, fig.width=6.25}
+ggplot(pvalsdfPRI) +
+  geom_tile(aes(x=dataset, y=vars, fill=hypothesis), color="black") +
+  geom_text(aes(x=dataset, y=vars, label=pvals), size=2.5) +
+  scale_fill_manual(values=cls1[c(1,3)]) +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_text(angle = 33,vjust = 1,hjust=1))
+```
+
+## Relationship btw lnL and sCF - Primates case
+
+```{r}
+dLnLVSsCFtabPRIi <- merge(dLnLtabPRIirF,scftabPRIF, by="locname")
+
+regressPRIih1 <- regression2(dLnLVSsCFtabPRIi)
+p9_1 <- ggplot(dLnLVSsCFtabPRIi, aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Primates: ΔlnL vs sCF, all") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressPRIih1, inherit.aes=FALSE, parse = T,
+             aes(x = 0.1, y = 20,
+                 label=paste("R^2:",R2)
+             ))
+print("PRI all lnLivssCF")
+print(regressPRIih1)
+
+regressPRIih2 <- regression2(dLnLVSsCFtabPRIi[dLnLVSsCFtabPRIi$locname %in% dLnLtabPRIirOUT$locname,])
+p9_2 <- ggplot(dLnLVSsCFtabPRIi[dLnLVSsCFtabPRIi$locname %in% dLnLtabPRIirOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Primates: ΔlnL vs sCF, outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressPRIih2, inherit.aes=FALSE, parse = T,
+             aes(x = 0.1, y = 20,
+                 label=paste("R^2:",R2)
+             ))
+print("PRI outliers lnLivssCF")
+print(regressPRIih2)
+
+regressPRIih3 <- regression2(dLnLVSsCFtabPRIi[dLnLVSsCFtabPRIi$locname %in% dLnLtabPRIirNONOUT$locname,])
+p9_3 <- ggplot(dLnLVSsCFtabPRIi[dLnLVSsCFtabPRIi$locname %in% dLnLtabPRIirNONOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Primates: ΔlnL vs sCF, non-outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressPRIih3, inherit.aes=FALSE, parse = T,
+             aes(x = 0.025, y = 50,
+                 label=paste("R^2:",R2)
+             ))
+print("PRI non-outliers lnLivssCF")
+print(regressPRIih3)
+
+```
+
+```{r}
+dLnLVSsCFtabPRIc <- merge(dLnLtabPRIcrF,scftabPRIF, by="locname")
+
+regressPRIch1 <- regression2(dLnLVSsCFtabPRIc)
+p9_4 <- ggplot(dLnLVSsCFtabPRIc, aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Primates: ΔlnL vs sCF, all") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressPRIch1, inherit.aes=FALSE, parse = T,
+             aes(x = 0.1, y = 20,
+                 label=paste("R^2:",R2)
+             ))
+print("PRI all lnLcvssCF")
+print(regressPRIch1)
+
+regressPRIch2 <- regression2(dLnLVSsCFtabPRIc[dLnLVSsCFtabPRIc$locname %in% dLnLtabPRIcrOUT$locname,])
+p9_5 <- ggplot(dLnLVSsCFtabPRIc[dLnLVSsCFtabPRIc$locname %in% dLnLtabPRIcrOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Primates: ΔlnL vs sCF, outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressPRIch2, inherit.aes=FALSE, parse = T,
+             aes(x = 0.1, y = 20,
+                 label=paste("R^2:",R2)
+             ))
+print("PRI outliers lnLcvssCF")
+print(regressPRIch2)
+
+regressPRIch3 <- regression2(dLnLVSsCFtabPRIc[dLnLVSsCFtabPRIc$locname %in% dLnLtabPRIcrNONOUT$locname,])
+p9_6 <- ggplot(dLnLVSsCFtabPRIc[dLnLVSsCFtabPRIc$locname %in% dLnLtabPRIcrNONOUT$locname,], aes(x=dLnL, y=sCF)) + geom_point() + theme_bw() + ggtitle("Primates: ΔlnL vs sCF, non-outliers") + xlab("ΔlnL") +
+  geom_smooth(method = "lm") + 
+  geom_label(data=regressPRIch3, inherit.aes=FALSE, parse = T,
+             aes(x = 0.025, y = 60,
+                 label=paste("R^2:",R2)
+             ))
+print("PRI non-outliers lnLcvssCF")
+print(regressPRIch3)
+
+```
+
+```{r, fig.height=8, fig.width=12}
+grid.arrange(p9_1,p9_2,p9_3,
+             p9_4,p9_5,p9_6,
+             nrow=2, ncol=3)
+```
+
+## Comparison of Treeshrew and Primates signal
+
+### venn diagrams of overlapp btw outliers for TSH and PRI
+Using two different ways of likelihood fit
+```{r}
+library(ggvenn)
+ggvenn(list(shrew=dLnLtabTSHirOUT$locname, pri=dLnLtabPRIirOUT$locname),columns=c("TSH","PRI"))
+ggvenn(list(shrew=dLnLtabTSHcrOUT$locname, pri=dLnLtabPRIcrOUT$locname),columns=c("TSH","PRI"))
+```
+
+## Treeshrew signal when filtering by primate loci
+```{r}
+#check signal of loci supporting monophyletic primates with respect to shrew
+print("individual fit")
+mergedTSHiPRIitab <- merge(dLnLtabTSHirFfilt, dLnLtabPRIirFfilt, by="locname")
+#count of loci for TSH which are non outliers and monophyletic for primates
+table(mergedTSHiPRIitab$topology.x[mergedTSHiPRIitab$topology.y=="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname])
+prop.table(table(mergedTSHiPRIitab$topology.x[mergedTSHiPRIitab$topology.y=="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname]))
+chisq_test(as.data.frame(table(mergedTSHiPRIitab$topology.x[mergedTSHiPRIitab$topology.y=="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname]))[,2])
+#count of loci for TSH which are non outliers and NON monophyletic for primates
+table(mergedTSHiPRIitab$topology.x[mergedTSHiPRIitab$topology.y!="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname])
+prop.table(table(mergedTSHiPRIitab$topology.x[mergedTSHiPRIitab$topology.y!="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname]))
+chisq_test(as.data.frame(table(mergedTSHiPRIitab$topology.x[mergedTSHiPRIitab$topology.y!="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname]))[,2])
+#median signal for same
+median(mergedTSHiPRIitab$dLnL.x[mergedTSHiPRIitab$topology.x == "PM_sister" & mergedTSHiPRIitab$topology.y=="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname])
+median(mergedTSHiPRIitab$dLnL.x[mergedTSHiPRIitab$topology.x == "GL_sister" & mergedTSHiPRIitab$topology.y=="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname])
+median(mergedTSHiPRIitab$dLnL.x[mergedTSHiPRIitab$topology.x == "PM_GL_sister" & mergedTSHiPRIitab$topology.y=="Monophyletic" & mergedTSHiPRIitab$locname %in% dLnLtabPRIirFfiltNONOUT$locname & mergedTSHiPRIitab$locname %in% dLnLtabTSHirFfiltNONOUT$locname])
+
+print("concat fit")
+mergedTSHcPRIctab <- merge(dLnLtabTSHcrFfilt, dLnLtabPRIcrFfilt, by="locname")
+#count of loci for TSH which are non outliers and monophyletic for primates
+table(mergedTSHcPRIctab$topology.x[mergedTSHcPRIctab$topology.y=="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname & mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname])
+prop.table(table(mergedTSHcPRIctab$topology.x[mergedTSHcPRIctab$topology.y=="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname & mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname]))
+chisq_test(as.data.frame(table(mergedTSHcPRIctab$topology.x[mergedTSHcPRIctab$topology.y=="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname &  mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname]))[,2])
+#count of loci for TSH which are non outliers and NON monophyletic for primates
+table(mergedTSHcPRIctab$topology.x[mergedTSHcPRIctab$topology.y!="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname & mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname])
+prop.table(table(mergedTSHcPRIctab$topology.x[mergedTSHcPRIctab$topology.y!="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname &  mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname]))
+chisq_test(as.data.frame(table(mergedTSHcPRIctab$topology.x[mergedTSHcPRIctab$topology.y!="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname & mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname]))[,2])
+#median signal for same
+median(mergedTSHcPRIctab$dLnL.x[mergedTSHcPRIctab$topology.x == "PM_sister" & mergedTSHcPRIctab$topology.y=="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname & mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname])
+median(mergedTSHcPRIctab$dLnL.x[mergedTSHcPRIctab$topology.x == "GL_sister" & mergedTSHcPRIctab$topology.y=="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname & mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname])
+median(mergedTSHcPRIctab$dLnL.x[mergedTSHcPRIctab$topology.x == "PM_GL_sister" & mergedTSHcPRIctab$topology.y=="Monophyletic" & mergedTSHcPRIctab$locname %in% dLnLtabPRIcrFfiltNONOUT$locname & mergedTSHcPRIctab$locname %in% dLnLtabTSHcrFfiltNONOUT$locname])
+
+print("sCF")
+mergedTSHPRIsCFtab <- merge(scftabTSHFfilt, scftabPRIFfilt, by="locname")
+#count of loci for TSH which are monophyletic for primates
+table(mergedTSHPRIsCFtab$topology.x[mergedTSHPRIsCFtab$topology.y=="Monophyletic"])
+prop.table(table(mergedTSHPRIsCFtab$topology.x[mergedTSHPRIsCFtab$topology.y=="Monophyletic"]))
+chisq_test(as.data.frame(table(mergedTSHPRIsCFtab$topology.x[mergedTSHPRIsCFtab$topology.y=="Monophyletic"]))[,2])
+#count of loci for TSH which are NON monophyletic for primates
+table(mergedTSHPRIsCFtab$topology.x[mergedTSHPRIsCFtab$topology.y!="Monophyletic"])
+prop.table(table(mergedTSHPRIsCFtab$topology.x[mergedTSHPRIsCFtab$topology.y!="Monophyletic"]))
+chisq_test(as.data.frame(table(mergedTSHPRIsCFtab$topology.x[mergedTSHPRIsCFtab$topology.y!="Monophyletic"]))[,2])
+#median signal for same
+median(mergedTSHPRIsCFtab$sCF.x[mergedTSHPRIsCFtab$topology.x == "PM_sister" & mergedTSHPRIsCFtab$topology.y=="Monophyletic"])
+median(mergedTSHPRIsCFtab$sCF.x[mergedTSHPRIsCFtab$topology.x == "GL_sister" & mergedTSHPRIsCFtab$topology.y=="Monophyletic"])
+median(mergedTSHPRIsCFtab$sCF.x[mergedTSHPRIsCFtab$topology.x == "PM_GL_sister" & mergedTSHPRIsCFtab$topology.y=="Monophyletic"])
+```
+
+## Save locus property and signal data
+Set to TRUE to save data
+```{r, eval=FALSE}
+#all data for supplements:
+combo_table3supp <- combo_table3[,c(1,2,3,6,8,10,12,32,44,45,52,53)]
+combo_table3supp[1,]
+write.csv(summary(combo_table3supp[,c(2:9,11:12)]), "data_analysis_revisions/propsummary.csv")
+
+combo_table3supp <- merge(combo_table3supp, dLnLtabTSHi , by.x="Alignment_name", by.y="V1", all.x=T)
+colnames(combo_table3supp)[13:15] <- c("individual_lnL_PM_sister","individual_lnL_GL_sister","individual_lnL_PM_GL_sister")
+
+combo_table3supp <- merge(combo_table3supp, dLnLtabTSHc, by.x="Alignment_name", by.y = "V1", all.x=T)
+colnames(combo_table3supp)[16:18] <- c("concat_lnL_PM_sister","concat_lnL_GL_sister","concat_lnL_PM_GL_sister")
+
+combo_table3supp <- merge(combo_table3supp, scf_tabTSH, by.x="Alignment_name", by.y="locname", all.x=T)
+colnames(combo_table3supp)[19:21] <- c("sCF_PM_sister","sCF_GL_sister","sCF_PM_GL_sister")
+
+combo_table3supp <- merge(combo_table3supp, dLnLtabPRIi, by.x="Alignment_name", by.y="V1", all.x=T)
+colnames(combo_table3supp)[22:24] <- c("individual_lnL_Prim_Mono", "individual_lnL_Prim_AltNNI1", "individual_lnL_Prim_AltNNI2")
+
+combo_table3supp <- merge(combo_table3supp, dLnLtabPRIc, by.x="Alignment_name", by.y="V1", all.x=T)
+colnames(combo_table3supp)[25:27] <- c("concat_lnL_Prim_Mono", "concat_lnL_Prim_AltNNI1", "concat_lnL_Prim_AltNNI2")
+
+combo_table3supp <- merge(combo_table3supp, scf_tabPRI, by.x="Alignment_name", by.y="locname", all.x=T)
+colnames(combo_table3supp)[28:30] <- c("sCF_Prim_Mono","sCF_Prim_AltNNI1","sCF_Prim_AltNNI2")
+
+write.csv(combo_table3supp, "data_analysis_revisions/TableS2.csv", row.names=F)
+
+```
+
+## The end
