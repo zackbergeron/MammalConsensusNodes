@@ -61,6 +61,11 @@ This step counts number of taxa in each group as defined for the filter by taxa 
 This step runs several assessments using IQ-TREE and several custom scripts. See **iqtree** folder
 * iqtree_prep.sh - slurm script to run: sets up the folders, lists of files to process and produces the command to run after; adjust paths on lines 9-12 as well as the number of simultaneous jobs on line 20 as needed.
 * iqtree_array.sh - slurm script to submit: runs the analyses; **submit using the command output by the previous step in its log file (\*.out)**; adjust paths on lines 16-27 as needed.
+* iqtree_array_concat.sh - slurm script to submit: infer concatenation trees
+* iqtree_array_gtree.sh - slurm script to submit: infer gene trees
+* iqtree_collect_gtrees.sh - slurm script to submit: collect gene tree data
+* iqtree_collect_output.sh - slurm script to submit: collect individual fit assessment data
+* iqtree_collect_phyloinference_LnL.sh - slurm script to submit: collect concatenation fit assessment data
 * trimTrees.R - script to trim taxa off of the main tree(s) depending on the taxon composition of a particular alignment, run by the previous shell script.
 * getSCF.R - script to extract sCF values for the branch of interest from IQ-TREE output, run by the previous shell script.
 
