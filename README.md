@@ -22,6 +22,12 @@ See **alignmentTemp** folder
 * alignment_prep_script.sh - to prep the slurm array job
 * alignment_array_script.sh - to run the alignment array job
 
+## Locus filtering using Branch Length Correlation
+This step can be used to filter out outlier loci based on discordance in branch length distribution. For use with this script a gene tree for each locus needs to be computed. See IQ-TREE analyses below, and iqtree_array_gtree.sh and iqtree_collect_gtrees.sh in particular. Output is a table with regression slope and R-squared, the latter can be used to rank and filter out loci with worst (lowest) values.
+See **screening** folder
+* treescreen.sh - to run the screening job
+* treescreen.R - tree screening R script, run by the shell script above
+
 ## Locus annotation
 
 This step aligns SISRS loci of a particular taxon to the reference sequence (ideally, of the same taxon). A custom script is used to retreive a reference taxon for the loci. Then BLAST is run. A custom python script is used to filter the output and convert it to BED. Overlapping hits of similar scores as well as very disjunct alignments are discarded. The BED file is then sorted and intersected with the GFF file for the reference sequence. A custom python script then processess the intersected BED file to produce the final output, either counts of different types of annotations, or length proportions of each of types of annotations. Currently the following types of annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or intergenic). See **annotation** folder
@@ -68,4 +74,9 @@ This step runs several assessments using IQ-TREE and several custom scripts. See
 * iqtree_collect_phyloinference_LnL.sh - slurm script to submit: collect concatenation fit assessment data
 * trimTrees.R - script to trim taxa off of the main tree(s) depending on the taxon composition of a particular alignment, run by the previous shell script.
 * getSCF.R - script to extract sCF values for the branch of interest from IQ-TREE output, run by the previous shell script.
+
+### Run SVDQuartets
+
+TBA
+
 
