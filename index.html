@@ -374,19 +374,29 @@ border: 1px solid black;
 background-color: lightyellow;
 border: 1px solid black;
 }
+
+.bg_text {
+background-color: honeydew;
+border: 1px solid black;
+}
 </style>
 <div id="filter-by-taxa" class="section level2">
 <h2>Filter By Taxa</h2>
-<p>See <a href="https://github.com/LMBiancani/PlacentalPolytomy/filterByTaxa">filterByTaxa</a>
+<p>See <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa">filterByTaxa</a>
 folder.</p>
-<p>Loci are first filtered from incomplete sequences (for the treeshrew
-project each passing sequence must have over 33% non N), then are
-filtered by the number of taxa retained (for the treeshrew project the
-locus passes if 25 taxa are remaining) and then by the number of groups
-present (for the treeshrew project all 6 groups must be present). The
-taxa to group correspondence table is expected to be a csv file and look
-like this:</p>
-<pre><code>group1,taxonName1
+<ul>
+<li>Removes excessively incomplete sequences (ex. sequence must be less
+than 33% Ns)</li>
+<li>Removes aligned loci with too few taxa represented (ex. locus must
+include sequences for at least 25 taxa)</li>
+<li>Removes aligned loci with incomplete clade sampling (ex. locus must
+include a sequence from all 4 taxon groups included in the
+<code>groups.csv</code> file)</li>
+<li>The required taxon-to-group correspondence table,
+<code>groups.csv</code>, is a csv file with the following format:</li>
+</ul>
+<pre><code>Group,Taxa
+group1,taxonName1
 group1,taxonName2
 group2,taxonName3
 group2,taxonName4</code></pre>
@@ -457,6 +467,12 @@ for f in glob.glob(fastafolder+&quot;/*.fasta&quot;):
             print (&quot;processed&quot;, counter1, &quot;loci, wrote&quot;, counter, &quot;loci&quot;, file=loghandle)
         counter2 = counter1
 print (&quot;done&quot;)</code></pre>
+<p>Taxon-to-group table: <code>groups.csv</code></p>
+<pre class="bg_text"><code>Group,Taxa
+group1,taxonName1
+group1,taxonName2
+group2,taxonName3
+group2,taxonName4</code></pre>
 </div>
 <div id="treeshrewproject" class="section level1">
 <h1><a href="https://github.com/AlexKnyshov/TreeshrewProject">TreeshrewProject</a></h1>

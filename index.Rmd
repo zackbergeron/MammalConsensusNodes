@@ -16,14 +16,22 @@ output: html_document
   background-color: lightyellow;
   border: 1px solid black;
 }
+/* Define a background class for displaying content of text files */
+.bg_text {
+  background-color: honeydew;
+  border: 1px solid black;
+}
 ```
 
 ## Filter By Taxa
-See [filterByTaxa](https://github.com/LMBiancani/PlacentalPolytomy/filterByTaxa) folder.
+See [filterByTaxa](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa) folder.
 
-Loci are first filtered from incomplete sequences (for the treeshrew project each passing sequence must have over 33% non N), then are filtered by the number of taxa retained (for the treeshrew project the locus passes if 25 taxa are remaining) and then by the number of groups present (for the treeshrew project all 6 groups must be present).
-The taxa to group correspondence table is expected to be a csv file and look like this:
+* Removes excessively incomplete sequences (ex. sequence must be less than 33% Ns)
+* Removes aligned loci with too few taxa represented (ex. locus must include sequences for at least 25 taxa)
+* Removes aligned loci with incomplete clade sampling (ex. locus must include a sequence from all 4 taxon groups included in the ```groups.csv``` file)
+* The required taxon-to-group correspondence table, ```groups.csv```, is a csv file with the following format: 
 ```
+Group,Taxa
 group1,taxonName1
 group1,taxonName2
 group2,taxonName3
@@ -38,6 +46,12 @@ Python script run by previous shell script: ```filter_SISRS_output.py```
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat filterByTaxa/filter_SISRS_output.py
 ```
+Taxon-to-group table: ```groups.csv```
+```{bash, comment=NA, echo=FALSE, class.output="bg_text"}
+cat filterByTaxa/groups.csv
+```
+
+
 
 # [TreeshrewProject](https://github.com/AlexKnyshov/TreeshrewProject)
 Notes for Scripts associated with the Treeshrew project:
