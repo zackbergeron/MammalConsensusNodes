@@ -382,7 +382,7 @@ border: 1px solid black;
 </style>
 <div id="filter-by-taxa" class="section level2">
 <h2>Filter By Taxa</h2>
-<p>See <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa">filterByTaxa</a>
+<p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa">filterByTaxa</a>
 folder.</p>
 <ul>
 <li>Removes excessively incomplete sequences (ex. sequence must be less
@@ -404,8 +404,11 @@ group2,taxonName4</code></pre>
 <pre class="bg_slurm"><code>#!/bin/sh
 
 #SBATCH --job-name=&quot;filter&quot;
-#SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
-
+#SBATCH --time=30:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node - just use 1 
+#SBATCH --mail-user=&quot;biancani@uri.edu&quot; #CHANGE to your email
+#SBATCH --mail-type=ALL
 ### adjust/add sbatch flags as needed
 
 cd $SLURM_SUBMIT_DIR
@@ -414,9 +417,16 @@ module purge
 #for URI&#39;s Andromeda cluster
 module load Biopython/1.78-foss-2020b 
 
+OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered # change to name and path for output folder (will be created by script!)
+TXNGROUPS=/data/schwartzlab/Biancani/PlacentalPolytomy/filterByTaxa/groups.csv # path to taxon group table (csv)
+LOCI=/data/schwartzlab/Biancani/PLACENTAL/SISRS_out/SISRS_Run/aligned_contigs # path to SISRS loci (aligned contigs)folder
+SEQCOMPLETE=0.33 # taxon sequence completeness, (e.g. 0.33 is 33% non N)
+MINTAXA=18 # minimum number taxa to be present, e.g. 25
+MINGROUPS=4 # minimum number of groups to be present, e.g. 4
+
 # adjust the command as needed, check the correct path to the python script
-mkdir &lt;path for output folder&gt;
-python &lt;path to&gt;filter_SISRS_output.py &lt;path to taxa group table&gt; &lt;path to SISRS loci folder&gt; &lt;path for output folder&gt; &lt;taxon sequence completeness, e.g. 0.33&gt; &lt;num taxa to be present, e.g. 25&gt; &lt;number of groups to be present, e.g. 6&gt;</code></pre>
+mkdir -p $OUTPUT
+python filter_SISRS_output.py $TXNGROUPS $LOCI $OUTPUT $SEQCOMPLETE $MINTAXA $MINGROUPS</code></pre>
 <p>Python script run by previous shell script:
 <code>filter_SISRS_output.py</code></p>
 <pre class="bg_python"><code>import sys
@@ -450,6 +460,8 @@ for f in glob.glob(fastafolder+&quot;/*.fasta&quot;):
     seqlens = []
     for seq in seqs:
         seqlens.append(len(seq.seq))
+    if len(seqlens) == 0: #added because it was exiting if the seqlens = 0
+    continue
     maxlen = max(seqlens)
     for seq in seqs:
         if float(len(str(seq.seq).upper().replace(&quot;N&quot;, &quot;&quot;)))/maxlen &gt; minseqdata:
@@ -469,10 +481,43 @@ for f in glob.glob(fastafolder+&quot;/*.fasta&quot;):
 print (&quot;done&quot;)</code></pre>
 <p>Taxon-to-group table: <code>groups.csv</code></p>
 <pre class="bg_text"><code>Group,Taxa
-group1,taxonName1
-group1,taxonName2
-group2,taxonName3
-group2,taxonName4</code></pre>
+Afrotheria,Amblysomus_hottentotus_longiceps
+Afrotheria,Chrysochloris_asiatica
+Afrotheria,Echinops_telfairi
+Afrotheria,Elephantulus_edwardii
+Afrotheria,Hydrodamalis_gigas
+Afrotheria,Loxodonta_africana
+Afrotheria,Microgale_talazaci
+Afrotheria,Orycteropus_afer
+Afrotheria,Procavia_capensis
+Afrotheria,Trichechus_manatus_latirostris
+Boreoeutheria,Ceratotherium_simum
+Boreoeutheria,Condylura_cristata
+Boreoeutheria,Galeopterus_variegatus
+Boreoeutheria,Hippopotamus_amphibius
+Boreoeutheria,Manis_javanica
+Boreoeutheria,Odobenus_rosmarus_divergens
+Boreoeutheria,Pan_troglodytes
+Boreoeutheria,Pteropus_vampyrus
+Boreoeutheria,Rattus_norvegicus
+Boreoeutheria,Tupaia_tana
+Metatheria,Didelphis_virginiana
+Metatheria,Gymnobelideus_leadbeateri
+Metatheria,Phalanger_gymnotis
+Metatheria,Phascolarctos_cinereus
+Metatheria,Potorous_gilbertii
+Metatheria,Pseudochirops_corinnae
+Metatheria,Sarcophilus_harrisii
+Metatheria,Thylacinus_cynocephalus
+Metatheria,Vombatus_ursinus
+Metatheria,Wallabia_bicolor
+Xenarthra,Chaetophractus_vellerosus
+Xenarthra,Choloepus_didactylus
+Xenarthra,Dasypus_novemcinctus
+Xenarthra,Mylodon_darwinii
+Xenarthra,Myrmecophaga_tridactyla
+Xenarthra,Tamandua_tetradactyla
+Xenarthra,Tolypeutes_matacus</code></pre>
 </div>
 <div id="treeshrewproject" class="section level1">
 <h1><a href="https://github.com/AlexKnyshov/TreeshrewProject">TreeshrewProject</a></h1>

@@ -24,7 +24,7 @@ output: html_document
 ```
 
 ## Filter By Taxa
-See [filterByTaxa](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa) folder.
+Scripts are located in the [filterByTaxa](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa) folder.
 
 * Removes excessively incomplete sequences (ex. sequence must be less than 33% Ns)
 * Removes aligned loci with too few taxa represented (ex. locus must include sequences for at least 25 taxa)
