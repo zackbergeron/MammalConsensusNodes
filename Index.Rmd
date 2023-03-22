@@ -1,0 +1,40 @@
+---
+title: "Notes"
+author: "Leann M. Biancani"
+output: html_document
+---
+[GitHub Repository: PlacentalPolytomy](https://github.com/LMBiancani/PlacentalPolytomy)
+
+```{css backgrounds, echo=FALSE}
+/* Define a background class for displaying content of slurm submission text files */
+.bg_slurm {
+  background-color: aliceblue;
+  border: 1px solid black;
+}
+/* Define a background class for displaying content of python text files */
+.bg_python {
+  background-color: lightyellow;
+  border: 1px solid black;
+}
+```
+
+## Filter By Taxa
+See [filterByTaxa](https://github.com/LMBiancani/PlacentalPolytomy/filterByTaxa) folder.
+
+Loci are first filtered from incomplete sequences (for the treeshrew project each passing sequence must have over 33% non N), then are filtered by the number of taxa retained (for the treeshrew project the locus passes if 25 taxa are remaining) and then by the number of groups present (for the treeshrew project all 6 groups must be present).
+The taxa to group correspondence table is expected to be a csv file and look like this:
+```
+group1,taxonName1
+group1,taxonName2
+group2,taxonName3
+group2,taxonName4
+```
+
+Slurm submission script: ```filter_SISRS_output.sh``` 
+```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
+cat filterByTaxa/filter_SISRS_output.sh
+```
+Python script run by previous shell script: ```filter_SISRS_output.py```
+```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
+cat filterByTaxa/filter_SISRS_output.py
+```
