@@ -29,6 +29,8 @@ for f in glob.glob(fastafolder+"/*.fasta"):
 	seqlens = []
 	for seq in seqs:
 		seqlens.append(len(seq.seq))
+	if len(seqlens) == 0: #added because it was exiting if the seqlens = 0
+    continue
 	maxlen = max(seqlens)
 	for seq in seqs:
 		if float(len(str(seq.seq).upper().replace("N", "")))/maxlen > minseqdata:
