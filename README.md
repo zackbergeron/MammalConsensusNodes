@@ -1,4 +1,10 @@
-# TreeshrewProject
+# PlacentalPolytomy
+Scripts associated with the Placental Mammal Polytomy Project.
+Adapted from [TreeshrewProject](https://github.com/AlexKnyshov/TreeshrewProject)
+
+
+
+# [TreeshrewProject](https://github.com/AlexKnyshov/TreeshrewProject)
 Scripts associated with the Treeshrew project
 
 ## Filter by taxa
