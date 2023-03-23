@@ -381,7 +381,7 @@ border: 1px solid black;
 }
 </style>
 <div id="filter-by-taxa" class="section level1">
-<h1>Filter By Taxa</h1>
+<h1>1. Filter By Taxa</h1>
 <p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa">filterByTaxa</a>
 folder.</p>
 <ul>
@@ -415,12 +415,14 @@ group2,taxonName4</code></pre>
 #SBATCH --mail-type=ALL
 
 ## UPDATE PATHS:
-# output folder path (will be created by script if necessary):
-OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
-# path to taxon group table (csv):
-TXNGROUPS=/data/schwartzlab/Biancani/PlacentalPolytomy/filterByTaxa/groups.csv
 # path to SISRS loci (aligned contigs) folder:
 LOCI=/data/schwartzlab/Biancani/PLACENTAL/SISRS_out/SISRS_Run/aligned_contigs
+# path to folder containing filterByTaxa scripts:
+SCRIPTS=/data/schwartzlab/Biancani/PlacentalPolytomy/annotation
+# path to taxon group table (csv):
+TXNGROUPS=/data/schwartzlab/Biancani/PlacentalPolytomy/filterByTaxa/groups.csv
+# path to output folder for filtered loci (will be created by script if necessary):
+OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
 
 ## UPDATE parameters:
 SEQCOMPLETE=0.33 # taxon sequence completeness, (e.g. 0.33 is 33% non N)
@@ -433,9 +435,8 @@ module purge
 #for URI&#39;s Andromeda cluster
 module load Biopython/1.78-foss-2020b 
 
-# adjust the command as needed, check the correct path to the python script
 mkdir -p $OUTPUT
-python filter_SISRS_output.py $TXNGROUPS $LOCI $OUTPUT $SEQCOMPLETE $MINTAXA $MINGROUPS</code></pre>
+python $SCRIPTS/filter_SISRS_output.py $TXNGROUPS $LOCI $OUTPUT $SEQCOMPLETE $MINTAXA $MINGROUPS</code></pre>
 </div>
 <div id="python-script-filter_sisrs_output.py" class="section level3">
 <h3>Python script: <code>filter_SISRS_output.py</code></h3>
@@ -536,7 +537,7 @@ Xenarthra,Tolypeutes_matacus</code></pre>
 </div>
 </div>
 <div id="annotate-loci" class="section level1">
-<h1>Annotate Loci</h1>
+<h1>2. Annotate Loci</h1>
 <p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/annotation">annotation</a>
 folder.</p>
 <ul>
@@ -601,16 +602,21 @@ below)</li>
 #SBATCH --job-name=&quot;annotate&quot;
 #SBATCH --time=100:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --ntasks-per-node=20   # processor core(s) per node
+#SBATCH --ntasks-per-node=36   # processor core(s) per node
+#SBATCH --mail-user=&quot;biancani@uri.edu&quot; ### CHANGE THIS to your user email address
 
-cd $SLURM_SUBMIT_DIR
-date
-scripts_dir=&quot;/home/aknyshov/alex_data/tree_shew_analysis/TreeshrewProject/annotation/&quot;
+## UPDATE PATHS:
+# location of annotation scripts:
+scripts_dir=&quot;/data/schwartzlab/Biancani/PlacentalPolytomy/annotation/&quot;
+
 sisrsContigs=&quot;../aligned_loci/&quot;
 taxonName=&quot;Homo_sapiens&quot;
 assemblyDB=&quot;/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.mod.fna&quot;
 assemblyGFF=&quot;/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.gff&quot;
 outputMode=&quot;l&quot;
+
+cd $SLURM_SUBMIT_DIR
+date
 
 #Andromeda (URI&#39;s cluster) specific
 module purge
