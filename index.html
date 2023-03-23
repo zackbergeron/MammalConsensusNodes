@@ -403,7 +403,8 @@ group2,taxonName4</code></pre>
 <div id="slurm-submission-script-filter_sisrs_output.sh" class="section level3">
 <h3>Slurm submission script: <code>filter_SISRS_output.sh</code></h3>
 <ul>
-<li>(runs the python script <code>filter_SISRS_output.py</code>)</li>
+<li>runs the following python script:
+<code>filter_SISRS_output.py</code></li>
 </ul>
 <pre class="bg_slurm"><code>#!/bin/sh
 
@@ -441,7 +442,8 @@ python $SCRIPTS/filter_SISRS_output.py $TXNGROUPS $LOCI $OUTPUT $SEQCOMPLETE $MI
 <div id="python-script-filter_sisrs_output.py" class="section level3">
 <h3>Python script: <code>filter_SISRS_output.py</code></h3>
 <ul>
-<li>(run by previous shell script)</li>
+<li>run by previous shell script:
+<code>filter_SISRS_output.sh</code></li>
 </ul>
 <pre class="bg_python"><code>import sys
 import glob
@@ -496,6 +498,10 @@ print (&quot;done&quot;)</code></pre>
 </div>
 <div id="taxon-to-group-table-groups.csv" class="section level3">
 <h3>Taxon-to-group table: <code>groups.csv</code></h3>
+<ul>
+<li>specify path to this input file in previous shell script:
+<code>filter_SISRS_output.sh</code></li>
+</ul>
 <pre class="bg_text"><code>Group,Taxa
 Afrotheria,Amblysomus_hottentotus_longiceps
 Afrotheria,Chrysochloris_asiatica
@@ -559,7 +565,7 @@ annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other
 <div id="slurm-submission-script-download_reference.sh" class="section level3">
 <h3>Slurm submission script: <code>download_reference.sh</code></h3>
 <ul>
-<li>Download reference genome (FASTA) and annotation (GFF) for Pan
+<li>downloads reference genome (FASTA) and annotation (GFF) for Pan
 troglodytes (chimpanzee) <a href="https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/">GCF_002880755.1</a></li>
 </ul>
 <pre class="bg_slurm"><code>#!/bin/sh
@@ -598,7 +604,9 @@ done</code></pre>
 <h3>Slurm submission script: <code>annotation_job.sh</code></h3>
 <ul>
 <li>runs the following python scripts:
-<code>annotation_getTaxContigs.py</code>,<code>annotation_blast_parser.py</code>,<code>annotation_bed2table.py</code></li>
+<code>annotation_getTaxContigs.py</code>,
+<code>annotation_blast_parser.py</code>,
+<code>annotation_bed2table.py</code></li>
 </ul>
 <pre class="bg_slurm"><code>#!/bin/bash
 #SBATCH --job-name=&quot;annotate&quot;
@@ -664,7 +672,7 @@ date</code></pre>
 <div id="python-script-annotation_gettaxcontigs.py" class="section level3">
 <h3>Python script: <code>annotation_getTaxContigs.py</code></h3>
 <ul>
-<li>Python script run by previous shell script</li>
+<li>run by previous shell script: <code>annotation_job.sh</code></li>
 <li>extracts SISRS loci of a particular taxon into a single file for use
 with BLAST</li>
 </ul>
@@ -690,7 +698,8 @@ taxonFile.close()</code></pre>
 <div id="python-script-annotation_blast_parser.py" class="section level3">
 <h3>Python script: <code>annotation_blast_parser.py</code></h3>
 <ul>
-<li>BLAST to BED script run by the previous shell script</li>
+<li>BLAST to BED python script run by the previous shell script:
+<code>annotation_job.sh</code></li>
 <li>adjust parameters on lines 10-12 as needed</li>
 </ul>
 <pre class="bg_python"><code>&#39;&#39;&#39;
@@ -897,8 +906,10 @@ with open(infile) as inhandle:
 <div id="python-script-annotation_bed2table.py" class="section level3">
 <h3>Python script: <code>annotation_bed2table.py</code></h3>
 <ul>
-<li>BED to table script run by the previous shell script</li>
-<li>two options are provided:</li>
+<li>BED to table python script run by the previous shell script:
+<code>annotation_job.sh</code></li>
+<li>two options are provided (to be specified in shell script:
+<code>annotation_job.sh</code>)</li>
 </ul>
 <ol style="list-style-type: decimal">
 <li>count the number of each feature per locus (<code>c</code>), for ex.
@@ -1057,6 +1068,88 @@ for locus in d:
             print (locus+&quot;,&quot;+&quot;,&quot;.join([str(round(x/total_annotation_bases,3)) for x in output_feature_dict.values()]))</code></pre>
 </div>
 </div>
+<div id="assess-locus-properties" class="section level1">
+<h1>3. Assess locus properties</h1>
+<div id="amas" class="section level2">
+<h2>3.1. AMAS</h2>
+<p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/amas">amas</a>
+folder.</p>
+<ul>
+<li>Runs AMAS to assess locus features</li>
+<li><strong>Note:</strong> AMAS takes file names as command line
+arguments with a limit on how long the line can be. In order to analyze
+several hundred thousand files, AMAS is run in batches by the driver
+script.</li>
+</ul>
+<div id="slurm-submission-script-run_amas.sh" class="section level3">
+<h3>Slurm submission script: <code>run_amas.sh</code></h3>
+<ul>
+<li>runs the following python script: <code>run_amas.py</code></li>
+<li>adjust <code>12</code> to the number of cores you wish to use</li>
+</ul>
+<pre class="bg_slurm"><code>#!/bin/bash
+#SBATCH --job-name=&quot;amas&quot;
+#SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=12   # processor core(s) per node
+#SBATCH --mail-user=&quot;aknyshov@uri.edu&quot;
+#SBATCH --mail-type=END,FAIL
+
+module purge
+module load Python/3.7.4-GCCcore-8.3.0
+path_to_amas=&quot;/home/aknyshov/alex_data/andromeda_tools/AMAS/amas/AMAS.py&quot;
+folder_with_loci=&quot;aligned_loci/&quot;
+cores_to_use=12
+
+cd $SLURM_SUBMIT_DIR
+date
+
+mkdir amas_assessments
+
+python ~/alex_data/tree_shew_analysis/TreeshrewProject/amas/run_amas.py ${folder_with_loci} ${cores_to_use} ${path_to_amas}
+
+mv amas_total_results.txt amas_assessments/
+rm amas_output_temp.txt
+
+date</code></pre>
+</div>
+<div id="python-script-run_amas.py" class="section level3">
+<h3>Python script: <code>run_amas.py</code></h3>
+<ul>
+<li>python script run by shell script: <code>run_amas.sh</code></li>
+</ul>
+<pre class="bg_python"><code>import sys
+import glob
+import subprocess
+
+fasta_folder = sys.argv[1]
+total_cores = sys.argv[2]
+files = glob.glob(fasta_folder+&quot;/*.fasta&quot;)
+amas = sys.argv[3]
+
+fileList = []
+count = 0
+first = True
+for f in files:
+    fileList.append(f)
+    count += 1
+    if count == 1000:
+        cmd = &quot;python &quot;+amas+&quot; summary -c &quot;+total_cores+&quot; -o amas_output_temp.txt -f fasta -d dna -i &quot;+&quot; &quot;.join(fileList)
+        subprocess.call(cmd, shell=True)
+        if first:
+            subprocess.call(&quot;sed -e &#39;$a\\&#39; amas_output_temp.txt &gt; amas_total_results.txt&quot;, shell=True)
+            first = False
+        else:
+            subprocess.call(&quot;sed -e 1d $f amas_output_temp.txt | sed -e &#39;$a\\&#39; &gt;&gt; amas_total_results.txt&quot;, shell=True)
+        count = 0
+        fileList = []
+if len(fileList) &gt; 0:
+    cmd = &quot;python &quot;+amas+&quot; summary -c &quot;+total_cores+&quot; -o amas_output_temp.txt -f fasta -d dna -i &quot;+&quot; &quot;.join(fileList)
+    subprocess.call(cmd, shell=True)
+    subprocess.call(&quot;sed -e 1d $f amas_output_temp.txt | sed -e &#39;$a\\&#39; &gt;&gt; amas_total_results.txt&quot;, shell=True)</code></pre>
+</div>
+</div>
+</div>
 <div id="treeshrewproject" class="section level1">
 <h1><a href="https://github.com/AlexKnyshov/TreeshrewProject">TreeshrewProject</a></h1>
 <p>Notes for Scripts associated with the Treeshrew project:</p>
@@ -1114,9 +1207,9 @@ for ex. 0.2 CDS, 0.8 introns. * getTaxContigs.py - script to extract
 SISRS loci of a particular taxon into a single file for use with
 BLAST</p>
 </div>
-<div id="assess-locus-properties" class="section level2">
+<div id="assess-locus-properties-1" class="section level2">
 <h2>Assess locus properties</h2>
-<div id="amas" class="section level3">
+<div id="amas-1" class="section level3">
 <h3>AMAS</h3>
 <p>This step runs AMAS to assess locus features. Since AMAS takes file
 names as command line arguments, there’s a limit on how long the line

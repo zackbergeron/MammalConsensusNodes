@@ -38,16 +38,17 @@ group2,taxonName3
 group2,taxonName4
 ```
 ### Slurm submission script: `filter_SISRS_output.sh`
-* (runs the python script `filter_SISRS_output.py`)
+* runs the following python script: `filter_SISRS_output.py`
 ```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
 cat filterByTaxa/filter_SISRS_output.sh
 ```
 ### Python script: `filter_SISRS_output.py`
-*  (run by previous shell script)
+*  run by previous shell script: `filter_SISRS_output.sh`
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat filterByTaxa/filter_SISRS_output.py
 ```
 ### Taxon-to-group table: `groups.csv`
+* specify path to this input file in previous shell script: `filter_SISRS_output.sh`
 ```{bash, comment=NA, echo=FALSE, class.output="bg_text"}
 cat filterByTaxa/groups.csv
 ```
@@ -63,38 +64,54 @@ Scripts are located in the [annotation](https://github.com/LMBiancani/PlacentalP
 either counts of different annotation types, or length proportion of each annotations type. The following types of annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or intergenic).
 
 ### Slurm submission script: `download_reference.sh`
-* Download reference genome (FASTA) and annotation (GFF) for Pan troglodytes (chimpanzee) [GCF_002880755.1](https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/)
+* downloads reference genome (FASTA) and annotation (GFF) for Pan troglodytes (chimpanzee) [GCF_002880755.1](https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/)
 ```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
 cat annotation/download_reference.sh
 ```
 ### Slurm submission script: `annotation_job.sh`
-* runs the following python scripts: `annotation_getTaxContigs.py`,`annotation_blast_parser.py`,`annotation_bed2table.py`
+* runs the following python scripts: `annotation_getTaxContigs.py`, `annotation_blast_parser.py`, `annotation_bed2table.py`
 ```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
 cat annotation/annotation_job.sh
 ```
 ### Python script: `annotation_getTaxContigs.py`
-* Python script run by previous shell script
+* run by previous shell script: `annotation_job.sh`
 * extracts SISRS loci of a particular taxon into a single file for use with BLAST
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat annotation/annotation_getTaxContigs.py
 ```
 ### Python script: `annotation_blast_parser.py`
-* BLAST to BED script run by the previous shell script
+* BLAST to BED python script run by the previous shell script: `annotation_job.sh`
 * adjust parameters on lines 10-12 as needed
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat annotation/annotation_blast_parser.py
 ```
 ### Python script: `annotation_bed2table.py`
-* BED to table script run by the previous shell script
-* two options are provided:
+* BED to table python script run by the previous shell script: `annotation_job.sh`
+* two options are provided (to be specified in shell script: `annotation_job.sh`)
 1. count the number of each feature per locus (`c`), for ex. 1 CDS, 2 introns, etc.
 2. compute proportion of length of each feature type per locus (`l`), for ex. 0.2 CDS, 0.8 introns
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat annotation/annotation_bed2table.py
 ```
 
+# 3. Assess locus properties
+## 3.1. AMAS
+Scripts are located in the [amas](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/amas) folder.
 
+* Runs AMAS to assess locus features
+* **Note:** AMAS takes file names as command line arguments with a limit on how long the line can be. In order to analyze several hundred thousand files, AMAS is run in batches by the driver script.
 
+### Slurm submission script: `run_amas.sh`
+* runs the following python script: `run_amas.py`
+* adjust `12` to the number of cores you wish to use
+```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
+cat amas/run_amas.sh
+```
+### Python script: `run_amas.py`
+* python script run by shell script: `run_amas.sh`
+```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
+cat amas/run_amas.py
+```
 
 # [TreeshrewProject](https://github.com/AlexKnyshov/TreeshrewProject)
 Notes for Scripts associated with the Treeshrew project:
