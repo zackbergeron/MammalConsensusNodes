@@ -1,5 +1,4 @@
 #!/bin/sh
-
 #SBATCH --job-name="download_reference"
 #SBATCH --time=10:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes

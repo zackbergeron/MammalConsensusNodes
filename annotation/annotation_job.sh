@@ -3,7 +3,8 @@
 #SBATCH --time=100:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks-per-node=36   # processor core(s) per node
-#SBATCH --mail-user="biancani@uri.edu" ### CHANGE THIS to your user email address
+#SBATCH --mail-user="biancani@uri.edu" # CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
 
 ## UPDATE:
 # number of tasks/processor cores per node:
