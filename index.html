@@ -519,6 +519,500 @@ Xenarthra,Myrmecophaga_tridactyla
 Xenarthra,Tamandua_tetradactyla
 Xenarthra,Tolypeutes_matacus</code></pre>
 </div>
+<div id="annotate-loci" class="section level2">
+<h2>Annotate Loci</h2>
+<p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/annotation">annotation</a>
+folder.</p>
+<ul>
+<li>Aligns SISRS loci of a particular taxon to a reference genome
+(ideally, of the same taxon).</li>
+<li>A custom script is used to retreive a reference taxon for the
+loci.</li>
+<li>BLAST is run.</li>
+<li>A custom python script is used to filter the output and convert it
+to BED. Overlapping hits of similar scores as well as very disjunct
+alignments are discarded. The BED file is then sorted and intersected
+with the GFF file for the reference sequence.</li>
+<li>A custom python script then processess the intersected BED file to
+produce the final output, either counts of different types of
+annotations, or length proportions of each of types of annotations.
+Currently the following types of annotations are recorded: pseudogene,
+CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or
+intergenic).</li>
+</ul>
+<p>Slurm submission script: <code>download_reference.sh</code></p>
+<ul>
+<li>Download reference genome (FASTA) and annotation (GFF) for Pan
+troglodytes (chimpanzee) <a href="https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/">GCF_002880755.1</a></li>
+</ul>
+<pre class="bg_slurm"><code>#!/bin/sh
+
+#SBATCH --job-name=&quot;download_reference&quot;
+#SBATCH --time=10:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH --mail-user=&quot;biancani@uri.edu&quot; #CHANGE to your email
+#SBATCH --mail-type=ALL
+
+## UPDATE URLs:
+#URL for GFF format reference annotation file: 
+ANNOTATION=&quot;https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/880/755/GCF_002880755.1_Clint_PTRv2/GCF_002880755.1_Clint_PTRv2_genomic.gff.gz&quot;
+#URL for fasta format reference genome:
+GENOME=&quot;https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/880/755/GCF_002880755.1_Clint_PTRv2/GCF_002880755.1_Clint_PTRv2_genomic.fna.gz&quot;
+
+cd $SLURM_SUBMIT_DIR
+
+for i in $ANNOTATION $GENOME
+do
+  #download file
+  wget --tries=0 --retry-connrefused --continue --timeout=30 --progress=dot:giga $i
+  #extract filename
+  name=$(echo $i | rev | cut -d &#39;/&#39; -f 1 | rev)
+  #decompress file
+  gunzip $name
+done</code></pre>
+<p>Slurm submission script: <code>annotation_job.sh</code></p>
+<ul>
+<li>adjust file paths</li>
+<li>adjust the command options on line 30 for the last script (see
+below)</li>
+</ul>
+<pre class="bg_slurm"><code>#!/bin/bash
+#SBATCH --job-name=&quot;annotate&quot;
+#SBATCH --time=100:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=20   # processor core(s) per node
+
+cd $SLURM_SUBMIT_DIR
+date
+scripts_dir=&quot;/home/aknyshov/alex_data/tree_shew_analysis/TreeshrewProject/annotation/&quot;
+sisrsContigs=&quot;../aligned_loci/&quot;
+taxonName=&quot;Homo_sapiens&quot;
+assemblyDB=&quot;/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.mod.fna&quot;
+assemblyGFF=&quot;/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.gff&quot;
+outputMode=&quot;l&quot;
+
+#Andromeda (URI&#39;s cluster) specific
+module purge
+module load Biopython/1.78-foss-2020b
+#
+python ${scripts_dir}/annotation_getTaxContigs.py ${taxonName} ${sisrsContigs}
+
+#Andromeda (URI&#39;s cluster) specific
+module purge
+module load BLAST+
+#
+
+makeblastdb -in ${assemblyDB} -dbtype nucl
+
+blastn -query ${taxonName}.fasta -db ${assemblyDB} -outfmt 6 -num_threads 20 &gt; blast_results.blast
+
+python3 ${scripts_dir}/annotation_blast_parser.py blast_results.blast &gt; full_table.bed
+
+sort -k1,1 -k2,2n full_table.bed &gt; full_table_sorted.bed
+
+#Andromeda (URI&#39;s cluster) specific
+module purge
+module load BEDTools/2.27.1-foss-2018b
+#
+
+bedtools intersect -a full_table_sorted.bed -b ${assemblyGFF} -wa -wb &gt; full_table_annotated.bed
+
+python3 ${scripts_dir}/annotation_bed2table.py full_table_annotated.bed ${outputMode} &gt; annotations.csv
+
+date</code></pre>
+<p>Slurm submission script: <code>annotation_getTaxContigs.py</code></p>
+<ul>
+<li>Python script run by previous shell script</li>
+<li>extracts SISRS loci of a particular taxon into a single file for use
+with BLAST</li>
+</ul>
+<pre class="bg_python"><code>from Bio import SeqIO
+import glob
+import sys
+
+taxon = sys.argv[1]
+taxonFile = open(taxon+&quot;.fasta&quot;, &quot;w&quot;)
+alignmentFolder = sys.argv[2]
+
+
+
+files = glob.glob(alignmentFolder+&quot;/*.fasta&quot;)
+
+for f in files:
+    fnew = &quot;.&quot;.join(f.split(&quot;/&quot;)[-1].split(&quot;.&quot;)[:-1])
+    seqs = SeqIO.parse(f, &quot;fasta&quot;)
+    for seq in seqs:
+        if seq.id == taxon:
+            print (&quot;&gt;&quot;+fnew+&quot;\n&quot;+str(seq.seq).upper().replace(&quot;-&quot;,&quot;N&quot;), file=taxonFile)
+
+taxonFile.close()</code></pre>
+<p>Slurm submission script: <code>annotation_blast_parser.py</code></p>
+<ul>
+<li>BLAST to BED script run by the previous shell script</li>
+<li>adjust parameters on lines 10-12 as needed</li>
+</ul>
+<pre class="bg_python"><code>&#39;&#39;&#39;
+this script takes BLAST outfmt 6 table and produces BED file,
+while also filtering out overlapping and / or closely matching sequences
+this BED file can then be annotated using bedtools intersect with the GFF file of interest
+&#39;&#39;&#39;
+import sys
+
+infile = sys.argv[1]
+
+# parameters - adjust as needed
+maxovlp = 5 #(greater than 5 bp overlap is considered overlapping)
+maxgap = -10000 #(gap over 10Kbp is considered to be too large to join pieces, only one will be selected)
+maxscoreratio = 0.05 #(bitscores that are only 5% different are considered to be too close to accurately discriminate)
+
+def get_hit(row):
+    &#39;&#39;&#39;
+    function to parse the BLASTN format 6 and get the needed fields out
+    &#39;&#39;&#39;
+    qstart = int(row[6])
+    qend = int(row[7])
+    tstart = int(row[8])
+    tend = int(row[9])
+    bitscore = float(row[11])
+    return [qstart, qend, tstart, tend, bitscore]
+
+def getOverlap(a, b):
+    &#39;&#39;&#39;
+    compute overlap (positive) or gap (negative) between two BLASTN HSPs
+    &#39;&#39;&#39;
+    a0=min(a)-1 #start one pos less to detect 1 bp overlap
+    a1=max(a)
+    b0=min(b)-1 #start one pos less to detect 1 bp overlap
+    b1=max(b)
+    return min(a1, b1) - max(a0, b0)
+
+def output_best_hit(hit_data, query_name):
+    &#39;&#39;&#39;
+    get all retained HSPs, select the best one, and produce the BED formatted output
+    &#39;&#39;&#39;
+    # if any HSPs retained
+    if len(hit_data) &gt; 0:
+        # only 1 Target retained
+        if len(hit_data) == 1:
+            # additionally check that it&#39;s not empty
+            if len(list(hit_data.values())[0]) &gt; 0:
+                # get final coordinates
+                tstart, tend, strand = get_final_coordinates(list(hit_data.values())[0])
+                # output in BED format
+                return list(hit_data)[0]+&quot;\t&quot;+tstart+&quot;\t&quot;+tend+&quot;\t&quot;+query_name+&quot;\t0\t&quot;+strand
+        else:
+            # multiple Targets, pick the best one
+            best_hit = &quot;&quot;
+            best_hit_score = 0
+            num_best_hits = 0
+            for hitkey, hitvalue in hit_data.items():
+                if len(hitvalue) &gt; 0:
+                    for hitregion in hitvalue:
+                        if best_hit_score == 0:
+                            best_hit = hitkey
+                            best_hit_score = hitregion[4]
+                            num_best_hits = 1
+                        else:
+                            hitratio = hitregion[4]/best_hit_score
+                            if 1 - maxscoreratio &lt;= hitratio &lt;= 1 + maxscoreratio:
+                                best_hit_score = max(hitregion[4], best_hit_score)
+                                num_best_hits = 2
+                            else:
+                                if hitratio &gt; 1 + maxscoreratio:
+                                    best_hit = hitkey
+                                    best_hit_score = hitregion[4]
+                                    num_best_hits = 1
+
+            if num_best_hits == 1:
+                # one Target considerably better, output
+                tstart, tend, strand = get_final_coordinates(hit_data[best_hit])
+                return best_hit+&quot;\t&quot;+tstart+&quot;\t&quot;+tend+&quot;\t&quot;+query_name+&quot;\t0\t&quot;+strand
+            else:
+                # several closely scored Targets, output None (conservative approach)
+                return None
+    else:
+        return None
+
+def get_final_coordinates(hit_data_value):
+    &#39;&#39;&#39;
+    given a collection of HSPs (1 or more), get the overall range and strand
+    thus if the HSPs are too disjunct, the overall range will be too large...
+    &#39;&#39;&#39;
+    # initialize min and max coordinates on Query and on Target
+    minq = 0
+    maxq = 0
+    mint = 0
+    maxt = 0
+    strand = None
+    for item in hit_data_value:
+        if item[0] &lt; item[1] and item[2] &lt; item[3]:
+            #forward
+            if minq == 0 or item[0] &lt; minq:
+                minq = item[0]
+            if item[1] &gt; maxq:
+                maxq = item[1]
+            if mint == 0 or item[2] &lt; mint:
+                mint = item[2]
+            if item[3] &gt; maxt:
+                maxt = item[3]
+            strand = &quot;+&quot;
+
+        elif item[0] &gt; item[1] and item[2] &lt; item[3]:
+            #reverse on Query
+            if minq == 0 or item[1] &lt; minq:
+                minq = item[1]
+            if item[0] &gt; maxq:
+                maxq = item[0]
+            if mint == 0 or item[2] &lt; mint:
+                mint = item[2]
+            if item[3] &gt; maxt:
+                maxt = item[3]
+            strand = &quot;-&quot;
+
+        elif item[0] &lt; item[1] and item[2] &gt; item[3]:
+            #reverse on Target
+            if minq == 0 or item[0] &lt; minq:
+                minq = item[0]
+            if item[1] &gt; maxq:
+                maxq = item[1]
+            if mint == 0 or item[3] &lt; mint:
+                mint = item[3]
+            if item[2] &gt; maxt:
+                maxt = item[2]
+            strand = &quot;-&quot;
+            
+    #format and output - only Target coordinates and strand are needed
+    return str(mint), str(maxt), strand
+
+# main procedure
+with open(infile) as inhandle:
+    # stores last read Query name (SISRS locus name)
+    previous_q = None
+    # stores last read Target / Subject name (Chromosome name)
+    previous_t = None
+    # stores HSPs for a given Query
+    previous_hit = {}
+    for line in inhandle:
+        split_line = line.strip().split(&quot;\t&quot;)
+        # if this is beginning of the file parsing
+        if previous_q == None:
+            previous_q = split_line[0]
+            previous_t = split_line[1]
+            previous_hit[previous_t] = [get_hit(split_line)]
+        # any subsequent line
+        else:
+            #same Query as before
+            if split_line[0] == previous_q:
+                # same Target as before
+                if split_line[1] == previous_t:
+                    # get current line needed fields
+                    hit1 = get_hit(split_line)
+                    # iterate over previously recorded HSPs and check for overlaps
+                    for hit2 in previous_hit[previous_t]:
+                        #compute overlaps on Query and on Target
+                        qovlp = getOverlap(hit1[:2],hit2[:2])
+                        tovlp = getOverlap(hit1[2:4],hit2[2:4])
+                        # if two HSPs overlap on Target (same chromosome region?),
+                        # or have too large gap on Target (too disjunct, causes problems counting annotations if the region is too large)
+                        # or two HSPs overlap on Query (same SISRS contig region)
+                        if tovlp &lt; maxgap or tovlp &gt; maxovlp or qovlp &gt; maxovlp:
+                            # compute ratio of the new HSP score over one of the previous HSP
+                            hitratio = hit1[4]/hit2[4]
+                            # if new HSP&#39;s score is considerably worse, do nothing (skipping)
+                            # if new HSP&#39;s score is considerably better, replace the old with the new
+                            if hitratio &gt; 1 + maxscoreratio:
+                                previous_hit[previous_t][previous_hit[previous_t].index(hit2)] = hit1
+                                # the list might get duplicates of the same record, but that&#39;s ok
+                            # otherwise ignore the new and remove the old
+                            elif 1 - maxscoreratio &lt;= hitratio &lt;= 1 + maxscoreratio:
+                                del previous_hit[previous_t][previous_hit[previous_t].index(hit2)]
+                                break
+                        else:
+                            #otherwise add the HSP to the current Target
+                            previous_hit[previous_t].append(hit1)
+                            break
+                # different target
+                else:
+                    # add as is
+                    previous_t = split_line[1]
+                    previous_hit[previous_t] = [get_hit(split_line)]
+
+            # new query - first check previous output
+            else:
+                line_output = output_best_hit(previous_hit, previous_q)
+                if line_output != None:
+                    print (line_output)
+                # then, default all the previous vars
+                previous_q = split_line[0]
+                previous_t = split_line[1]
+                previous_hit = {}
+                previous_hit[previous_t] = [get_hit(split_line)]
+    #final output - output the last results
+    final_output = output_best_hit(previous_hit, previous_q)
+    if final_output != None:
+        print (final_output)</code></pre>
+<p>Slurm submission script: <code>annotation_bed2table.py</code></p>
+<ul>
+<li>BED to table script run by the previous shell script</li>
+<li>two options are provided:</li>
+</ul>
+<ol style="list-style-type: decimal">
+<li>count the number of each feature per locus (<code>c</code>), for ex.
+1 CDS, 2 introns, etc.</li>
+<li>compute proportion of length of each feature type per locus
+(<code>l</code>), for ex. 0.2 CDS, 0.8 introns</li>
+</ol>
+<pre class="bg_python"><code>&#39;&#39;&#39;
+this script takes annotated BED file and 
+produces a count table of different marker types of interest for each (SISRS) locus
+currently the whole annotation table is stored in RAM, watch out when the files are large
+&#39;&#39;&#39;
+import sys
+
+infilename = sys.argv[1]
+option = sys.argv[2]
+
+def determineType(inplist):
+    &#39;&#39;&#39;
+    function to determine output feature type given the input features
+    for example, combination of gene and exon but no CDS will yield UTR,
+    while gene with no exon will yield intron
+    &#39;&#39;&#39;
+    #prep input / output
+    typelist = [x.split(&quot;@&quot;)[0] for x in inplist]
+    returnSet = set([])
+    
+    #features to ignore for deciding on what&#39;s not annotated vs &#39;other&#39; features
+    #the entire genome is annotated with region, so not helpful
+    #match is unclear, also ignoring
+    #mRNA and transcript are unnecessary given gene exon and CDS features, so ignoring as well
+    ignored_features = [&quot;region&quot;, &quot;match&quot;,&quot;transcript&quot;]
+    #feature types, that are not in ignored and not in special, will be set to &quot;other&quot; in the output
+    special_features = [&quot;pseudogene&quot;,&quot;gene&quot;,&quot;exon&quot;,&quot;CDS&quot;,&quot;lnc_RNA&quot;,&quot;mRNA&quot;]
+
+    #parse special features
+    if &quot;pseudogene&quot; in typelist:
+        returnSet.add(&quot;pseudogene&quot;)
+    if &quot;gene&quot; in typelist:
+        if &quot;mRNA&quot; in typelist:
+            if &quot;exon&quot; in typelist:
+                if &quot;CDS&quot; in typelist:
+                    returnSet.add (&quot;CDS&quot;)
+                else:
+                    returnSet.add (&quot;UTR&quot;)
+            else:
+                returnSet.add (&quot;intron&quot;)
+        elif &quot;lnc_RNA&quot; in typelist:
+            returnSet.add (&quot;lnc_RNA&quot;)
+        else:
+            returnSet.add (&quot;other&quot;)
+    if &quot;lnc_RNA&quot; in typelist:
+        returnSet.add (&quot;lnc_RNA&quot;)
+    #figure out if there are any features that qualify for &#39;other&#39;
+    for ft in typelist:
+        if ft not in ignored_features and ft not in special_features:
+            returnSet.add (&quot;other&quot;)
+    #if not then set as unannotated
+    if len(returnSet) == 0:
+        returnSet.add (&quot;unannotated&quot;)
+    return returnSet
+
+# main process
+d = {}
+with open(infilename) as infhandle:
+    for line in infhandle:
+        splitline = line.strip().split(&#39;\t&#39;)
+        # get SISRS locus name
+        locus = splitline[3]
+        
+        # get feature string: featureType@Start@End@Strand
+        feature = splitline[8]+&quot;@&quot;+&quot;@&quot;.join(splitline[9:11])+&quot;@&quot;+splitline[12]
+        
+        # get SISRS locus annotation string: Chromo@Start@End@Strand
+        # normally each SISRS locus only mapped once so there should be
+        # only 1 annotationR entry per SISRS locus
+        annotationR = splitline[0]+&quot;@&quot;+&quot;@&quot;.join(splitline[1:3])+&quot;@&quot;+splitline[5]
+
+        # add data to dictionary - this will be kept in RAM
+        if locus in d:
+            if annotationR in d[locus]:
+                d[locus][annotationR].add(feature)
+            else:
+                d[locus][annotationR] = set([feature])
+        else:
+            d[locus] = {annotationR: set([feature])}
+
+# prepare for output
+print (&quot;locus,pseudogene,CDS,UTR,intron,lnc_RNA,other,unannotated&quot;)
+
+# for each sisrs contig
+for locus in d:
+    # for each different mapping of sisrs contig (ideally, only 1)
+    for annotationR in d[locus]:
+        #initialize the dict to store counts for this mapping of the SISRS locus (normally the ONLY mapping)
+        output_feature_dict = {&quot;pseudogene&quot;:0, &quot;CDS&quot;:0, &quot;UTR&quot;:0, &quot;intron&quot;:0, &quot;lnc_RNA&quot;:0, &quot;other&quot;:0, &quot;unannotated&quot;:0}
+
+        #get SISRS locus info
+        locusstart = int(annotationR.split(&quot;@&quot;)[1])
+        locusend = int(annotationR.split(&quot;@&quot;)[2])
+        locusstrand = annotationR.split(&quot;@&quot;)[3]
+
+        #parse all the features for this SISRS contig and mapping
+        features = d[locus][annotationR]
+        featuretypes = [x.split(&quot;@&quot;)[0] for x in features]
+        featurestart = [int(x.split(&quot;@&quot;)[1])-1 for x in features]
+        featureend = [int(x.split(&quot;@&quot;)[2]) for x in features]
+        featurestrand = [x.split(&quot;@&quot;)[3] for x in features]
+
+        #collect all features and their ranges:
+        # for every SISRS locus position mark which features span it
+        sitecounter = 0
+        posdict = {}
+        for site in range(locusstart, locusend):
+            posdict[sitecounter] = []
+            for featureN in range(len(features)):
+                if featurestart[featureN] &lt;= site and featureend[featureN] &gt;= site:
+                    comboName = featuretypes[featureN]+&quot;@&quot;+featurestrand[featureN]
+                    posdict[sitecounter].append(comboName)
+            sitecounter += 1
+        
+        # iterate over the obtained posdict
+        # to figure out feature type for a given region,
+        # considering the original features that overlapped there
+        final_annotation = {}
+        poscounter = 0
+        currentType = None
+        currentCounter = poscounter
+        for seqpos in posdict:
+            if currentType == None:
+                currentType = determineType(posdict[seqpos])
+            else:
+                if currentType != determineType(posdict[seqpos]):
+                    final_annotation[str(currentCounter)+&quot;@&quot;+str(poscounter)] = currentType
+                    currentType = determineType(posdict[seqpos])
+                    currentCounter = poscounter
+            poscounter+=1
+        final_annotation[str(currentCounter)+&quot;@&quot;+str(poscounter)] = currentType
+
+        #generate output - two options here:
+        # get counts of each feature type for a locus or get sequence length proportions of each feature type for a locus
+        
+        if option == &quot;l&quot;:
+            total_annotation_bases = 0
+        for fk, fv in final_annotation.items():
+            for ft in fv:
+                if option == &quot;c&quot;:
+                    output_feature_dict[ft] += 1
+                elif option == &quot;l&quot;:
+                    annotation_length = int(fk.split(&quot;@&quot;)[1])-int(fk.split(&quot;@&quot;)[0])
+                    output_feature_dict[ft] += annotation_length
+                    total_annotation_bases += annotation_length
+        if option == &quot;c&quot;:
+            print (locus+&quot;,&quot;+&quot;,&quot;.join([str(x) for x in output_feature_dict.values()]))
+        elif option == &quot;l&quot;:
+            print (locus+&quot;,&quot;+&quot;,&quot;.join([str(round(x/total_annotation_bases,3)) for x in output_feature_dict.values()]))</code></pre>
+</div>
 <div id="treeshrewproject" class="section level1">
 <h1><a href="https://github.com/AlexKnyshov/TreeshrewProject">TreeshrewProject</a></h1>
 <p>Notes for Scripts associated with the Treeshrew project:</p>
