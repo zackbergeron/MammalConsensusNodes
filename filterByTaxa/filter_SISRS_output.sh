@@ -28,5 +28,9 @@ module purge
 #for URI's Andromeda cluster
 module load Biopython/1.78-foss-2020b 
 
+<<<<<<< HEAD
+=======
+# adjust the command as needed, check the correct path to the python script
+>>>>>>> 99b3e74dc9984811844909b62a9d8c8d7d5bcd51
 mkdir -p $OUTPUT
 python $SCRIPTS/filter_SISRS_output.py $TXNGROUPS $LOCI $OUTPUT $SEQCOMPLETE $MINTAXA $MINGROUPS
