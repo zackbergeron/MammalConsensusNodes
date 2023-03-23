@@ -59,7 +59,8 @@ Scripts are located in the [annotation](https://github.com/LMBiancani/PlacentalP
 * A custom script is used to retreive a reference taxon for the loci.
 * BLAST is run. 
 * A custom python script is used to filter the output and convert it to BED. Overlapping hits of similar scores as well as very disjunct alignments are discarded. The BED file is then sorted and intersected with the GFF file for the reference sequence.
-* A custom python script then processess the intersected BED file to produce the final output, either counts of different types of annotations, or length proportions of each of types of annotations. Currently the following types of annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or intergenic).
+* A custom python script then processess the intersected BED file to produce the final output,
+either counts of different annotation types, or length proportion of each annotations type. The following types of annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or intergenic).
 
 ### Slurm submission script: `download_reference.sh`
 * Download reference genome (FASTA) and annotation (GFF) for Pan troglodytes (chimpanzee) [GCF_002880755.1](https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/)

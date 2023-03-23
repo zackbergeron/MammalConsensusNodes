@@ -6,8 +6,6 @@ taxon = sys.argv[1]
 taxonFile = open(taxon+".fasta", "w")
 alignmentFolder = sys.argv[2]
 
-
-
 files = glob.glob(alignmentFolder+"/*.fasta")
 
 for f in files:

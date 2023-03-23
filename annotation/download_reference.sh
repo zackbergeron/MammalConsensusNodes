@@ -11,9 +11,6 @@
 # path to folder for reference genome (will be created by script if necessary):
 RefDir=/data/schwartzlab/Biancani/PlacentalPolytomy/output/reference_genome
 
-# path to output folder for filtered loci (will be created by script if necessary):
-OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
-
 ## UPDATE URLs:
 #URL for GFF format reference annotation file: 
 ANNOTATION="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/880/755/GCF_002880755.1_Clint_PTRv2/GCF_002880755.1_Clint_PTRv2_genomic.gff.gz"

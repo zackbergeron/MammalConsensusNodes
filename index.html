@@ -551,11 +551,10 @@ to BED. Overlapping hits of similar scores as well as very disjunct
 alignments are discarded. The BED file is then sorted and intersected
 with the GFF file for the reference sequence.</li>
 <li>A custom python script then processess the intersected BED file to
-produce the final output, either counts of different types of
-annotations, or length proportions of each of types of annotations.
-Currently the following types of annotations are recorded: pseudogene,
-CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or
-intergenic).</li>
+produce the final output, either counts of different annotation types,
+or length proportion of each annotations type. The following types of
+annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other
+(any other type), unannotated (or intergenic).</li>
 </ul>
 <div id="slurm-submission-script-download_reference.sh" class="section level3">
 <h3>Slurm submission script: <code>download_reference.sh</code></h3>
@@ -572,21 +571,26 @@ troglodytes (chimpanzee) <a href="https://www.ncbi.nlm.nih.gov/data-hub/genome/G
 #SBATCH --mail-user=&quot;biancani@uri.edu&quot; #CHANGE to your email
 #SBATCH --mail-type=ALL
 
+## UPDATE PATH:
+# path to folder for reference genome (will be created by script if necessary):
+RefDir=/data/schwartzlab/Biancani/PlacentalPolytomy/output/reference_genome
+
 ## UPDATE URLs:
 #URL for GFF format reference annotation file: 
 ANNOTATION=&quot;https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/880/755/GCF_002880755.1_Clint_PTRv2/GCF_002880755.1_Clint_PTRv2_genomic.gff.gz&quot;
 #URL for fasta format reference genome:
 GENOME=&quot;https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/880/755/GCF_002880755.1_Clint_PTRv2/GCF_002880755.1_Clint_PTRv2_genomic.fna.gz&quot;
 
-cd $SLURM_SUBMIT_DIR
+mkdir -p $RefDir
+cd $RefDir
 
 for i in $ANNOTATION $GENOME
 do
-  #download file
+  #download file:
   wget --tries=0 --retry-connrefused --continue --timeout=30 --progress=dot:giga $i
-  #extract filename from URL
+  #extract filename from URL:
   name=$(echo $i | rev | cut -d &#39;/&#39; -f 1 | rev)
-  #decompress file
+  #decompress file:
   gunzip $name
 done</code></pre>
 </div>
@@ -603,35 +607,46 @@ done</code></pre>
 #SBATCH --ntasks-per-node=36   # processor core(s) per node
 #SBATCH --mail-user=&quot;biancani@uri.edu&quot; ### CHANGE THIS to your user email address
 
-## UPDATE PATHS:
+## UPDATE:
+# number of tasks/processor cores per node:
+TASKS=36
 # location of annotation scripts:
-scripts_dir=&quot;/data/schwartzlab/Biancani/PlacentalPolytomy/annotation/&quot;
+SCRIPTS=/data/schwartzlab/Biancani/PlacentalPolytomy/annotation
+# path to FILTERED SISRS loci (aligned contigs) folder:
+LOCI=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
+# path to output folder for annotation (will be created by script if necessary):
+OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/annotation
 
-sisrsContigs=&quot;../aligned_loci/&quot;
-taxonName=&quot;Homo_sapiens&quot;
-assemblyDB=&quot;/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.mod.fna&quot;
-assemblyGFF=&quot;/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.gff&quot;
+# name of study taxon closest to reference:
+taxonName=&quot;Pan_troglodytes&quot;
+# path to FASTA format reference genome:
+GENOME=&quot;/data/schwartzlab/Biancani/PlacentalPolytomy/output/reference_genome/GCF_002880755.1_Clint_PTRv2_genomic.fna&quot;
+# path to GFF format reference annotation file:
+ANNOTATION=&quot;/data/schwartzlab/Biancani/PlacentalPolytomy/output/reference_genome/GCF_002880755.1_Clint_PTRv2_genomic.gff&quot;
+# select output mode (either counts of different annotation types, or length proportion of each annotations type)
+## (`c`) count the number of each feature per locus, for ex. 1 CDS, 2 introns, etc.
+## (`l`) compute proportion of length of each feature type per locus, for ex. 0.2 CDS, 0.8 introns
 outputMode=&quot;l&quot;
 
-cd $SLURM_SUBMIT_DIR
-date
+mkdir $OUTPUT
+cd $OUTPUT
 
 #Andromeda (URI&#39;s cluster) specific
 module purge
 module load Biopython/1.78-foss-2020b
 #
-python ${scripts_dir}/annotation_getTaxContigs.py ${taxonName} ${sisrsContigs}
+python ${SCRIPTS}/annotation_getTaxContigs.py ${taxonName} ${LOCI}
 
 #Andromeda (URI&#39;s cluster) specific
 module purge
 module load BLAST+
 #
 
-makeblastdb -in ${assemblyDB} -dbtype nucl
+makeblastdb -in ${GENOME} -dbtype nucl
 
-blastn -query ${taxonName}.fasta -db ${assemblyDB} -outfmt 6 -num_threads 20 &gt; blast_results.blast
+blastn -query ${taxonName}.fasta -db ${GENOME} -outfmt 6 -num_threads ${TASKS} &gt; blast_results.blast
 
-python3 ${scripts_dir}/annotation_blast_parser.py blast_results.blast &gt; full_table.bed
+python3 ${SCRIPTS}/annotation_blast_parser.py blast_results.blast &gt; full_table.bed
 
 sort -k1,1 -k2,2n full_table.bed &gt; full_table_sorted.bed
 
@@ -640,9 +655,9 @@ module purge
 module load BEDTools/2.27.1-foss-2018b
 #
 
-bedtools intersect -a full_table_sorted.bed -b ${assemblyGFF} -wa -wb &gt; full_table_annotated.bed
+bedtools intersect -a full_table_sorted.bed -b ${ANNOTATION} -wa -wb &gt; full_table_annotated.bed
 
-python3 ${scripts_dir}/annotation_bed2table.py full_table_annotated.bed ${outputMode} &gt; annotations.csv
+python3 ${SCRIPTS}/annotation_bed2table.py full_table_annotated.bed ${outputMode} &gt; annotations.csv
 
 date</code></pre>
 </div>
@@ -660,8 +675,6 @@ import sys
 taxon = sys.argv[1]
 taxonFile = open(taxon+&quot;.fasta&quot;, &quot;w&quot;)
 alignmentFolder = sys.argv[2]
-
-
 
 files = glob.glob(alignmentFolder+&quot;/*.fasta&quot;)
 
