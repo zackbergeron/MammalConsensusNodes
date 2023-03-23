@@ -19,7 +19,7 @@ for i in $ANNOTATION $GENOME
 do
   #download file
   wget --tries=0 --retry-connrefused --continue --timeout=30 --progress=dot:giga $i
-  #extract filename
+  #extract filename from URL
   name=$(echo $i | rev | cut -d '/' -f 1 | rev)
   #decompress file
   gunzip $name

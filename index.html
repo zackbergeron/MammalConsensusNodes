@@ -380,8 +380,8 @@ background-color: honeydew;
 border: 1px solid black;
 }
 </style>
-<div id="filter-by-taxa" class="section level2">
-<h2>Filter By Taxa</h2>
+<div id="filter-by-taxa" class="section level1">
+<h1>Filter By Taxa</h1>
 <p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa">filterByTaxa</a>
 folder.</p>
 <ul>
@@ -400,7 +400,11 @@ group1,taxonName1
 group1,taxonName2
 group2,taxonName3
 group2,taxonName4</code></pre>
-<p>Slurm submission script: <code>filter_SISRS_output.sh</code></p>
+<div id="slurm-submission-script-filter_sisrs_output.sh" class="section level3">
+<h3>Slurm submission script: <code>filter_SISRS_output.sh</code></h3>
+<ul>
+<li>(runs the python script <code>filter_SISRS_output.py</code>)</li>
+</ul>
 <pre class="bg_slurm"><code>#!/bin/sh
 
 #SBATCH --job-name=&quot;filter&quot;
@@ -409,7 +413,19 @@ group2,taxonName4</code></pre>
 #SBATCH --ntasks-per-node=1   # processor core(s) per node - just use 1 
 #SBATCH --mail-user=&quot;biancani@uri.edu&quot; #CHANGE to your email
 #SBATCH --mail-type=ALL
-### adjust/add sbatch flags as needed
+
+## UPDATE PATHS:
+# output folder path (will be created by script if necessary):
+OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
+# path to taxon group table (csv):
+TXNGROUPS=/data/schwartzlab/Biancani/PlacentalPolytomy/filterByTaxa/groups.csv
+# path to SISRS loci (aligned contigs) folder:
+LOCI=/data/schwartzlab/Biancani/PLACENTAL/SISRS_out/SISRS_Run/aligned_contigs
+
+## UPDATE parameters:
+SEQCOMPLETE=0.33 # taxon sequence completeness, (e.g. 0.33 is 33% non N)
+MINTAXA=18 # minimum number taxa to be present, e.g. 25
+MINGROUPS=4 # minimum number of groups to be present, e.g. 4
 
 cd $SLURM_SUBMIT_DIR
 
@@ -417,18 +433,15 @@ module purge
 #for URI&#39;s Andromeda cluster
 module load Biopython/1.78-foss-2020b 
 
-OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered # change to name and path for output folder (will be created by script!)
-TXNGROUPS=/data/schwartzlab/Biancani/PlacentalPolytomy/filterByTaxa/groups.csv # path to taxon group table (csv)
-LOCI=/data/schwartzlab/Biancani/PLACENTAL/SISRS_out/SISRS_Run/aligned_contigs # path to SISRS loci (aligned contigs)folder
-SEQCOMPLETE=0.33 # taxon sequence completeness, (e.g. 0.33 is 33% non N)
-MINTAXA=18 # minimum number taxa to be present, e.g. 25
-MINGROUPS=4 # minimum number of groups to be present, e.g. 4
-
 # adjust the command as needed, check the correct path to the python script
 mkdir -p $OUTPUT
 python filter_SISRS_output.py $TXNGROUPS $LOCI $OUTPUT $SEQCOMPLETE $MINTAXA $MINGROUPS</code></pre>
-<p>Python script run by previous shell script:
-<code>filter_SISRS_output.py</code></p>
+</div>
+<div id="python-script-filter_sisrs_output.py" class="section level3">
+<h3>Python script: <code>filter_SISRS_output.py</code></h3>
+<ul>
+<li>(run by previous shell script)</li>
+</ul>
 <pre class="bg_python"><code>import sys
 import glob
 from Bio import SeqIO
@@ -479,7 +492,9 @@ for f in glob.glob(fastafolder+&quot;/*.fasta&quot;):
             print (&quot;processed&quot;, counter1, &quot;loci, wrote&quot;, counter, &quot;loci&quot;, file=loghandle)
         counter2 = counter1
 print (&quot;done&quot;)</code></pre>
-<p>Taxon-to-group table: <code>groups.csv</code></p>
+</div>
+<div id="taxon-to-group-table-groups.csv" class="section level3">
+<h3>Taxon-to-group table: <code>groups.csv</code></h3>
 <pre class="bg_text"><code>Group,Taxa
 Afrotheria,Amblysomus_hottentotus_longiceps
 Afrotheria,Chrysochloris_asiatica
@@ -519,8 +534,9 @@ Xenarthra,Myrmecophaga_tridactyla
 Xenarthra,Tamandua_tetradactyla
 Xenarthra,Tolypeutes_matacus</code></pre>
 </div>
-<div id="annotate-loci" class="section level2">
-<h2>Annotate Loci</h2>
+</div>
+<div id="annotate-loci" class="section level1">
+<h1>Annotate Loci</h1>
 <p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/annotation">annotation</a>
 folder.</p>
 <ul>
@@ -540,7 +556,8 @@ Currently the following types of annotations are recorded: pseudogene,
 CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or
 intergenic).</li>
 </ul>
-<p>Slurm submission script: <code>download_reference.sh</code></p>
+<div id="slurm-submission-script-download_reference.sh" class="section level3">
+<h3>Slurm submission script: <code>download_reference.sh</code></h3>
 <ul>
 <li>Download reference genome (FASTA) and annotation (GFF) for Pan
 troglodytes (chimpanzee) <a href="https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/">GCF_002880755.1</a></li>
@@ -566,14 +583,17 @@ for i in $ANNOTATION $GENOME
 do
   #download file
   wget --tries=0 --retry-connrefused --continue --timeout=30 --progress=dot:giga $i
-  #extract filename
+  #extract filename from URL
   name=$(echo $i | rev | cut -d &#39;/&#39; -f 1 | rev)
   #decompress file
   gunzip $name
 done</code></pre>
-<p>Slurm submission script: <code>annotation_job.sh</code></p>
+</div>
+<div id="slurm-submission-script-annotation_job.sh" class="section level3">
+<h3>Slurm submission script: <code>annotation_job.sh</code></h3>
 <ul>
-<li>adjust file paths</li>
+<li>runs the follown python scripts:
+<code>annotation_getTaxContigs.py</code>,<code>annotation_blast_parser.py</code>,<code>annotation_bed2table.py</code></li>
 <li>adjust the command options on line 30 for the last script (see
 below)</li>
 </ul>
@@ -621,7 +641,9 @@ bedtools intersect -a full_table_sorted.bed -b ${assemblyGFF} -wa -wb &gt; full_
 python3 ${scripts_dir}/annotation_bed2table.py full_table_annotated.bed ${outputMode} &gt; annotations.csv
 
 date</code></pre>
-<p>Slurm submission script: <code>annotation_getTaxContigs.py</code></p>
+</div>
+<div id="python-script-annotation_gettaxcontigs.py" class="section level3">
+<h3>Python script: <code>annotation_getTaxContigs.py</code></h3>
 <ul>
 <li>Python script run by previous shell script</li>
 <li>extracts SISRS loci of a particular taxon into a single file for use
@@ -647,7 +669,9 @@ for f in files:
             print (&quot;&gt;&quot;+fnew+&quot;\n&quot;+str(seq.seq).upper().replace(&quot;-&quot;,&quot;N&quot;), file=taxonFile)
 
 taxonFile.close()</code></pre>
-<p>Slurm submission script: <code>annotation_blast_parser.py</code></p>
+</div>
+<div id="python-script-annotation_blast_parser.py" class="section level3">
+<h3>Python script: <code>annotation_blast_parser.py</code></h3>
 <ul>
 <li>BLAST to BED script run by the previous shell script</li>
 <li>adjust parameters on lines 10-12 as needed</li>
@@ -852,7 +876,9 @@ with open(infile) as inhandle:
     final_output = output_best_hit(previous_hit, previous_q)
     if final_output != None:
         print (final_output)</code></pre>
-<p>Slurm submission script: <code>annotation_bed2table.py</code></p>
+</div>
+<div id="python-script-annotation_bed2table.py" class="section level3">
+<h3>Python script: <code>annotation_bed2table.py</code></h3>
 <ul>
 <li>BED to table script run by the previous shell script</li>
 <li>two options are provided:</li>
@@ -1012,6 +1038,7 @@ for locus in d:
             print (locus+&quot;,&quot;+&quot;,&quot;.join([str(x) for x in output_feature_dict.values()]))
         elif option == &quot;l&quot;:
             print (locus+&quot;,&quot;+&quot;,&quot;.join([str(round(x/total_annotation_bases,3)) for x in output_feature_dict.values()]))</code></pre>
+</div>
 </div>
 <div id="treeshrewproject" class="section level1">
 <h1><a href="https://github.com/AlexKnyshov/TreeshrewProject">TreeshrewProject</a></h1>

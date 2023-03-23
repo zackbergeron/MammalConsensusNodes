@@ -23,13 +23,13 @@ output: html_document
 }
 ```
 
-## Filter By Taxa
+# 1. Filter By Taxa
 Scripts are located in the [filterByTaxa](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/filterByTaxa) folder.
 
 * Removes excessively incomplete sequences (ex. sequence must be less than 33% Ns)
 * Removes aligned loci with too few taxa represented (ex. locus must include sequences for at least 25 taxa)
-* Removes aligned loci with incomplete clade sampling (ex. locus must include a sequence from all 4 taxon groups included in the ```groups.csv``` file)
-* The required taxon-to-group correspondence table, ```groups.csv```, is a csv file with the following format: 
+* Removes aligned loci with incomplete clade sampling (ex. locus must include a sequence from all 4 taxon groups included in the `groups.csv` file)
+* The required taxon-to-group correspondence table, `groups.csv`, is a csv file with the following format: 
 ```
 Group,Taxa
 group1,taxonName1
@@ -37,21 +37,22 @@ group1,taxonName2
 group2,taxonName3
 group2,taxonName4
 ```
-
-Slurm submission script: ```filter_SISRS_output.sh``` 
+### Slurm submission script: `filter_SISRS_output.sh`
+* (runs the python script `filter_SISRS_output.py`)
 ```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
 cat filterByTaxa/filter_SISRS_output.sh
 ```
-Python script run by previous shell script: ```filter_SISRS_output.py```
+### Python script: `filter_SISRS_output.py`
+*  (run by previous shell script)
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat filterByTaxa/filter_SISRS_output.py
 ```
-Taxon-to-group table: ```groups.csv```
+### Taxon-to-group table: `groups.csv`
 ```{bash, comment=NA, echo=FALSE, class.output="bg_text"}
 cat filterByTaxa/groups.csv
 ```
 
-## Annotate Loci
+# 2. Annotate Loci
 Scripts are located in the [annotation](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/annotation) folder.
 
 * Aligns SISRS loci of a particular taxon to a reference genome (ideally, of the same taxon).
@@ -60,39 +61,30 @@ Scripts are located in the [annotation](https://github.com/LMBiancani/PlacentalP
 * A custom python script is used to filter the output and convert it to BED. Overlapping hits of similar scores as well as very disjunct alignments are discarded. The BED file is then sorted and intersected with the GFF file for the reference sequence.
 * A custom python script then processess the intersected BED file to produce the final output, either counts of different types of annotations, or length proportions of each of types of annotations. Currently the following types of annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other (any other type), unannotated (or intergenic).
 
-Slurm submission script: ```download_reference.sh```
-
+### Slurm submission script: `download_reference.sh`
 * Download reference genome (FASTA) and annotation (GFF) for Pan troglodytes (chimpanzee) [GCF_002880755.1](https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/)
 ```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
 cat annotation/download_reference.sh
 ```
-
-Slurm submission script: ```annotation_job.sh```
-
-* adjust file paths
+### Slurm submission script: `annotation_job.sh`
+* runs the follown python scripts: `annotation_getTaxContigs.py`,`annotation_blast_parser.py`,`annotation_bed2table.py`
 * adjust the command options on line 30 for the last script (see below)
 ```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
 cat annotation/annotation_job.sh
 ```
-
-Slurm submission script: ```annotation_getTaxContigs.py```
-
+### Python script: `annotation_getTaxContigs.py`
 * Python script run by previous shell script
 * extracts SISRS loci of a particular taxon into a single file for use with BLAST
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat annotation/annotation_getTaxContigs.py
 ```
-
-Slurm submission script: ```annotation_blast_parser.py```
-
+### Python script: `annotation_blast_parser.py`
 * BLAST to BED script run by the previous shell script
 * adjust parameters on lines 10-12 as needed
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat annotation/annotation_blast_parser.py
 ```
-
-Slurm submission script: ```annotation_bed2table.py```
-
+### Python script: `annotation_bed2table.py`
 * BED to table script run by the previous shell script
 * two options are provided:
 1. count the number of each feature per locus (`c`), for ex. 1 CDS, 2 introns, etc.

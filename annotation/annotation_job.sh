@@ -2,16 +2,21 @@
 #SBATCH --job-name="annotate"
 #SBATCH --time=100:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --ntasks-per-node=20   # processor core(s) per node
+#SBATCH --ntasks-per-node=36   # processor core(s) per node
+#SBATCH --mail-user="biancani@uri.edu" ### CHANGE THIS to your user email address
 
-cd $SLURM_SUBMIT_DIR
-date
-scripts_dir="/home/aknyshov/alex_data/tree_shew_analysis/TreeshrewProject/annotation/"
+## UPDATE PATHS:
+# location of annotation scripts:
+scripts_dir="/data/schwartzlab/Biancani/PlacentalPolytomy/annotation/"
+
 sisrsContigs="../aligned_loci/"
 taxonName="Homo_sapiens"
 assemblyDB="/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.mod.fna"
 assemblyGFF="/home/aknyshov/alex_data/tree_shew_analysis/NCBI_genomes/Homo_sapiens/GCF_000001405.39_GRCh38.p13_genomic.gff"
 outputMode="l"
+
+cd $SLURM_SUBMIT_DIR
+date
 
 #Andromeda (URI's cluster) specific
 module purge
