@@ -17,10 +17,10 @@ cd $SLURM_SUBMIT_DIR
 
 for i in $ANNOTATION $GENOME
 do
-  #download file
+  #download file:
   wget --tries=0 --retry-connrefused --continue --timeout=30 --progress=dot:giga $i
-  #extract filename from URL
+  #extract filename from URL:
   name=$(echo $i | rev | cut -d '/' -f 1 | rev)
-  #decompress file
+  #decompress file:
   gunzip $name
 done

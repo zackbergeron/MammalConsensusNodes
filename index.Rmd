@@ -67,8 +67,7 @@ Scripts are located in the [annotation](https://github.com/LMBiancani/PlacentalP
 cat annotation/download_reference.sh
 ```
 ### Slurm submission script: `annotation_job.sh`
-* runs the follown python scripts: `annotation_getTaxContigs.py`,`annotation_blast_parser.py`,`annotation_bed2table.py`
-* adjust the command options on line 30 for the last script (see below)
+* runs the following python scripts: `annotation_getTaxContigs.py`,`annotation_blast_parser.py`,`annotation_bed2table.py`
 ```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
 cat annotation/annotation_job.sh
 ```
