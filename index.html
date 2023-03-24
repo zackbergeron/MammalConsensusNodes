@@ -407,7 +407,6 @@ group2,taxonName4</code></pre>
 <code>filter_SISRS_output.py</code></li>
 </ul>
 <pre class="bg_slurm"><code>#!/bin/sh
-
 #SBATCH --job-name=&quot;filter&quot;
 #SBATCH --time=30:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
@@ -569,7 +568,6 @@ annotations are recorded: pseudogene, CDS, UTR, intron, lnc_RNA, other
 troglodytes (chimpanzee) <a href="https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_002880755.1/">GCF_002880755.1</a></li>
 </ul>
 <pre class="bg_slurm"><code>#!/bin/sh
-
 #SBATCH --job-name=&quot;download_reference&quot;
 #SBATCH --time=10:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
@@ -613,7 +611,8 @@ done</code></pre>
 #SBATCH --time=100:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks-per-node=36   # processor core(s) per node
-#SBATCH --mail-user=&quot;biancani@uri.edu&quot; ### CHANGE THIS to your user email address
+#SBATCH --mail-user=&quot;biancani@uri.edu&quot; # CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
 
 ## UPDATE:
 # number of tasks/processor cores per node:
@@ -1081,6 +1080,14 @@ arguments with a limit on how long the line can be. In order to analyze
 several hundred thousand files, AMAS is run in batches by the driver
 script.</li>
 </ul>
+<div id="download-amas" class="section level3">
+<h3>Download AMAS</h3>
+<ul>
+<li>note path to <code>AMAS.py</code> and add path to slurm script
+<code>run_amas.sh</code></li>
+</ul>
+<pre><code>git clone https://github.com/marekborowiec/AMAS/</code></pre>
+</div>
 <div id="slurm-submission-script-run_amas.sh" class="section level3">
 <h3>Slurm submission script: <code>run_amas.sh</code></h3>
 <ul>

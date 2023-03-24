@@ -101,6 +101,11 @@ Scripts are located in the [amas](https://github.com/LMBiancani/PlacentalPolytom
 * Runs AMAS to assess locus features
 * **Note:** AMAS takes file names as command line arguments with a limit on how long the line can be. In order to analyze several hundred thousand files, AMAS is run in batches by the driver script.
 
+### Download AMAS
+* note path to `AMAS.py` and add path to slurm script `run_amas.sh`
+```
+git clone https://github.com/marekborowiec/AMAS/
+```
 ### Slurm submission script: `run_amas.sh`
 * runs the following python script: `run_amas.py`
 * adjust `12` to the number of cores you wish to use
