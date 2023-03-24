@@ -2,22 +2,32 @@
 #SBATCH --job-name="amas"
 #SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --ntasks-per-node=12   # processor core(s) per node
-#SBATCH --mail-user="aknyshov@uri.edu"
-#SBATCH --mail-type=END,FAIL
+#SBATCH --ntasks-per-node=36   # processor core(s) per node
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
 
+# UPDATE:
+# path to AMAS program (AMAS.py):
+AMAS=/data/schwartzlab/Biancani/AMAS/amas/AMAS.py
+# number of tasks/cores per node:
+CORES=36
+# location of amas scripts:
+SCRIPTS=/data/schwartzlab/Biancani/PlacentalPolytomy/amas
+# path to FILTERED SISRS loci (aligned contigs) folder:
+LOCI=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
+# path to output folder for amas (will be created by script if necessary):
+OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/amas
+
+#Andromeda (URI's cluster) specific
 module purge
 module load Python/3.7.4-GCCcore-8.3.0
-path_to_amas="/home/aknyshov/alex_data/andromeda_tools/AMAS/amas/AMAS.py"
-folder_with_loci="aligned_loci/"
-cores_to_use=12
+#
 
-cd $SLURM_SUBMIT_DIR
+mkdir -p ${OUTPUT}/amas_assessments
+cd ${OUTPUT}
 date
 
-mkdir amas_assessments
-
-python ~/alex_data/tree_shew_analysis/TreeshrewProject/amas/run_amas.py ${folder_with_loci} ${cores_to_use} ${path_to_amas}
+python ${SCRIPTS}/run_amas.py ${LOCI} ${CORES} ${AMAS}
 
 mv amas_total_results.txt amas_assessments/
 rm amas_output_temp.txt
