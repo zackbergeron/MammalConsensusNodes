@@ -21,6 +21,11 @@ output: html_document
   background-color: honeydew;
   border: 1px solid black;
 }
+/* Define a background class for displaying content of R files */
+.bg_R {
+  background-color lightsteelblue;
+  border: 1px solid black;
+}
 ```
 
 # 1. Filter By Taxa
@@ -94,7 +99,7 @@ cat annotation/annotation_blast_parser.py
 cat annotation/annotation_bed2table.py
 ```
 
-# 3. Assess locus properties
+# 3. Assess Locus Properties
 ## 3.1. AMAS
 Scripts are located in the [amas](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/amas) folder.
 
@@ -116,6 +121,27 @@ cat amas/run_amas.sh
 ```{bash, comment=NA, echo=FALSE, class.output="bg_python"}
 cat amas/run_amas.py
 ```
+
+# 4. Asses Phylogenetic Signal: IQ-TREE
+Scripts are located in the [iqtree](https://github.com/LMBiancani/PlacentalPolytomy/tree/main/iqtree) folder.
+
+### Slurm submission script: `iqtree_prep.sh`
+* sets up the folder and lists of files to process
+* generates the array details that need to be added to subsequent array submission scripts
+```{bash, comment=NA, echo=FALSE, class.output="bg_slurm"}
+cat iqtree/iqtree_prep.sh
+```
+
+
+* iqtree_array.sh - slurm script to submit: runs the analyses; **submit using the command output by the previous step in its log file (\*.out)**; adjust paths on lines 16-27 as needed.
+* iqtree_array_concat.sh - slurm script to submit: infer concatenation trees
+* iqtree_array_gtree.sh - slurm script to submit: infer gene trees
+* iqtree_collect_gtrees.sh - slurm script to submit: collect gene tree data
+* iqtree_collect_output.sh - slurm script to submit: collect individual fit assessment data
+* iqtree_collect_phyloinference_LnL.sh - slurm script to submit: collect concatenation fit assessment data
+* trimTrees.R - script to trim taxa off of the main tree(s) depending on the taxon composition of a particular alignment, run by the previous shell script.
+* getSCF.R - script to extract sCF values for the branch of interest from IQ-TREE output, run by the previous shell script.
+
 
 # [TreeshrewProject](https://github.com/AlexKnyshov/TreeshrewProject)
 Notes for Scripts associated with the Treeshrew project:
@@ -172,7 +198,6 @@ This step counts number of taxa in each group as defined for the filter by taxa 
 * taxon_composition_slurm.sh - slurm script to run
 
 ## Assess the phylogenetic signal
-
 ### Obtain the trees to score
 
 ### Run IQ-TREE

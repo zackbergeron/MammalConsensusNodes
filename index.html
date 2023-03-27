@@ -379,6 +379,11 @@ border: 1px solid black;
 background-color: honeydew;
 border: 1px solid black;
 }
+
+.bg_R {
+background-color lightsteelblue;
+border: 1px solid black;
+}
 </style>
 <div id="filter-by-taxa" class="section level1">
 <h1>1. Filter By Taxa</h1>
@@ -1068,7 +1073,7 @@ for locus in d:
 </div>
 </div>
 <div id="assess-locus-properties" class="section level1">
-<h1>3. Assess locus properties</h1>
+<h1>3. Assess Locus Properties</h1>
 <div id="amas" class="section level2">
 <h2>3.1. AMAS</h2>
 <p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/amas">amas</a>
@@ -1164,6 +1169,76 @@ if len(fileList) &gt; 0:
     subprocess.call(cmd, shell=True)
     subprocess.call(&quot;sed -e 1d $f amas_output_temp.txt | sed -e &#39;$a\\&#39; &gt;&gt; amas_total_results.txt&quot;, shell=True)</code></pre>
 </div>
+</div>
+</div>
+<div id="asses-phylogenetic-signal-iq-tree" class="section level1">
+<h1>4. Asses Phylogenetic Signal: IQ-TREE</h1>
+<p>Scripts are located in the <a href="https://github.com/LMBiancani/PlacentalPolytomy/tree/main/iqtree">iqtree</a>
+folder.</p>
+<div id="slurm-submission-script-iqtree_prep.sh" class="section level3">
+<h3>Slurm submission script: <code>iqtree_prep.sh</code></h3>
+<ul>
+<li>sets up the folder and lists of files to process</li>
+<li>generates the array details that need to be added to subsequent
+array submission scripts</li>
+</ul>
+<pre class="bg_slurm"><code>#!/bin/bash
+#SBATCH --job-name=&quot;IQprep&quot;
+#SBATCH --time=1:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=6G
+#SBATCH --mail-user=&quot;biancani@uri.edu&quot;
+#SBATCH --mail-type=ALL
+
+# UPDATE:
+# path to main output directory:
+script_work_dir=/data/schwartzlab/Biancani/PlacentalPolytomy/output
+# name output folder for iqtree (will be created by script if necessary):
+array_work_folder=&quot;iqtree_assessment&quot;
+# location of iqtree scripts:
+scripts_dir=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree
+# path to FILTERED SISRS loci (aligned contigs) folder:
+aligned_loci_path=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
+# number of simultaneous tasks for subsequent array jobs:
+array_tasks=40
+
+cd ${script_work_dir}
+mkdir -p ${array_work_folder}
+cd ${array_work_folder}
+mkdir scf
+# extract filenames from aligned_loci_path and split into bins of 4000
+ls ${aligned_loci_path} | rev | cut -f1 -d/ | rev | split -l 4000 - aligned_loci_list_
+arrayN=$(ls aligned_loci_list_* | wc -l)
+ls aligned_loci_list_* &gt; array_list.txt
+if [ $arrayN -lt $array_tasks ]
+    then
+      array_tasks=$arrayN
+fi
+
+#echo sbatch --array=1-${arrayN}%{array_tasks} ${scripts_dir}iqtree_array.sh
+echo \#SBATCH --array=${arrayN}%${array_tasks}</code></pre>
+<ul>
+<li>iqtree_array.sh - slurm script to submit: runs the analyses;
+<strong>submit using the command output by the previous step in its log
+file (*.out)</strong>; adjust paths on lines 16-27 as needed.</li>
+<li>iqtree_array_concat.sh - slurm script to submit: infer concatenation
+trees</li>
+<li>iqtree_array_gtree.sh - slurm script to submit: infer gene
+trees</li>
+<li>iqtree_collect_gtrees.sh - slurm script to submit: collect gene tree
+data</li>
+<li>iqtree_collect_output.sh - slurm script to submit: collect
+individual fit assessment data</li>
+<li>iqtree_collect_phyloinference_LnL.sh - slurm script to submit:
+collect concatenation fit assessment data</li>
+<li>trimTrees.R - script to trim taxa off of the main tree(s) depending
+on the taxon composition of a particular alignment, run by the previous
+shell script.</li>
+<li>getSCF.R - script to extract sCF values for the branch of interest
+from IQ-TREE output, run by the previous shell script.</li>
+</ul>
 </div>
 </div>
 <div id="treeshrewproject" class="section level1">
