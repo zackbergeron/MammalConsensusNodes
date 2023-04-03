@@ -1,0 +1,10 @@
+Condylura_cristata
+Ceratotherium_simum
+Manis_javanica
+Odobenus_rosmarus_divergens
+Hippopotamus_amphibius
+Pteropus_vampyrus
+Galeopterus_variegatus
+Pan_troglodytes
+Rattus_norvegicus
+Tupaia_tana

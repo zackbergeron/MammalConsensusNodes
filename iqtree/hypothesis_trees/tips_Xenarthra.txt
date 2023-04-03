@@ -1,0 +1,8 @@
+Mylodon_darwinii
+Choloepus_didactylus
+Myrmecophaga_tridactyla
+Tamandua_tetradactyla
+Dasypus_novemcinctus
+Tolypeutes_matacus
+Chaetophractus_vellerosus
+
