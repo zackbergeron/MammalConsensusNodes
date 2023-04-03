@@ -21,7 +21,7 @@ iqtree_exe="/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree
 # location of iqtree scripts:
 scripts_dir=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree
 # path to file containing alternative hypotheses trees:
-trees_to_eval=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/Placental_Hypotheses.tree
+trees_to_eval=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/Polytomy_Placental_Hypotheses.tree
 # Specify taxon list for each hypothesis tree:
 # For Placental root question: Determine which 2 out of 3 groups are sisters for each hypothesis and select one of the sisters.
 # List 1 (Afrotheria Out) = Xenarthra
@@ -49,8 +49,11 @@ do
 	echo $line
 	Rscript ${scripts_dir}trimTrees.R ${aligned_loci_path}/${line} ${trees_to_eval} ./trees_${line}.tre
 	
+	#ML on 3 trees
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -z ./trees_${line}.tre -pre calcLnL_${line} -n 0 -m GTR+G
 	echo $line","$(grep "Tree 1 / LogL:" calcLnL_${line}.log | cut -f2 -d: )","$(grep "Tree 2 / LogL:" calcLnL_${line}.log | cut -f2 -d: )","$(grep "Tree 3 / LogL:" calcLnL_${line}.log | cut -f2 -d: ) >> LnLs_${SLURM_ARRAY_TASK_ID}.csv
+	
+	#estimate tree on constraints (sed collapsed tree)
 	
 	sed -n 1p ./trees_${line}.tre > ./tree1_${line}.tre
 	${iqtree_exe} -nt 1 -t ./tree1_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord1_${line}
