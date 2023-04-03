@@ -11,7 +11,6 @@
 
 ## update array line above based on output of iqtree prep script
 
-
 cd $SLURM_SUBMIT_DIR
 
 date
