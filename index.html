@@ -1402,10 +1402,80 @@ Gymnobelideus_leadbeateri
 Pseudochirops_corinnae
 Wallabia_bicolor
 Potorous_gilbertii</code></pre>
-<p>trimTrees.R - script to trim taxa off of the main tree(s) depending
-on the taxon composition of a particular alignment, run by the previous
-shell script. getSCF.R - script to extract sCF values for the branch of
-interest from IQ-TREE output, run by the previous shell script.</p>
+</div>
+<div id="r-script-trimtrees.r" class="section level3">
+<h3>R script: <code>trimTrees.R</code></h3>
+<ul>
+<li>run by previous shell script: <code>iqtree_array.sh</code></li>
+<li>trim taxa off of the main tree(s) if not included in taxon
+composition of a particular alignment</li>
+</ul>
+<pre class="bg_R"><code>library (ape)
+args = commandArgs(trailingOnly=TRUE)
+argsLen &lt;- length(args);
+if (argsLen == 0){
+  cat(&quot;Syntax: Rscript trimTrees.R [path to dna alignment] [path to trees file] [output tree path]\n&quot;)
+  cat(&quot;Example: Rscript trimTrees.R dna.fas trees.tre trees_trimmed.tre\n&quot;)
+  quit()
+}
+alignment &lt;- read.dna(args[1], format=&quot;fasta&quot;)
+trees &lt;- read.tree(args[2])
+outtreesname &lt;- args[3]
+taxapresent &lt;- rownames(alignment)
+outtrees &lt;- list()
+i &lt;- 1
+for (t in trees){
+    treetips &lt;- t$tip.label
+    tipstoremove &lt;- treetips[!(treetips %in% taxapresent)]
+    outtrees[[i]] &lt;- drop.tip(t, tipstoremove)
+    i &lt;- i + 1
+}
+class(outtrees) &lt;- &quot;multiPhylo&quot;
+write.tree(outtrees, outtreesname)</code></pre>
+</div>
+<div id="r-script-getscf.r" class="section level3">
+<h3>R script: <code>getSCF.R</code></h3>
+<ul>
+<li>run by previous shell script: <code>iqtree_array.sh</code></li>
+<li>extract sCF values for the branch of interest from IQ-TREE
+output</li>
+</ul>
+<pre class="bg_R"><code>library (ape)
+args = commandArgs(trailingOnly=TRUE)
+argsLen &lt;- length(args);
+if (argsLen == 0){
+  cat(&quot;Syntax: Rscript getSCF.R [path to .cf.branch] [path to .cf.stat] [path to tips list] [path to outgroup tips list] \n&quot;)
+  cat(&quot;Example: Rscript getSCF.R test.cf.branch test.cf.stat tipsToAnalyse.txt outgroup.txt\n&quot;)
+  quit()
+}
+reftree &lt;- read.tree(args[1])
+stattable &lt;- read.table(args[2],header=TRUE, fill=TRUE)
+filtertaxa &lt;- readLines(args[3])
+outtaxa &lt;- readLines(args[4])
+
+#since IQ-TREE occasionally reroots trees, have to reroot back by outgroup in order for the results to make sense
+presentouttaxa &lt;- reftree$tip.label[reftree$tip.label %in% outtaxa]
+if (length(presentouttaxa) == 1){
+    outgroupTipID &lt;- which(reftree$tip.label == presentouttaxa)
+    outgroupMRCA &lt;- reftree$edge[reftree$edge[,2] == outgroupTipID,1]
+} else {
+    outgroupMRCA &lt;- getMRCA(reftree, presentouttaxa)
+}
+if (outgroupMRCA != reftree$edge[1,1]){
+    reftree &lt;- root(reftree, node= outgroupMRCA, edgelabel = T)
+}
+
+presentTestTaxa &lt;- reftree$tip.label[reftree$tip.label %in% filtertaxa]
+if (length(presentTestTaxa) == 1) {
+    nodeToRetrieve &lt;- as.numeric (reftree$node.label[reftree$edge[reftree$edge[,2] == which (reftree$tip.label %in% presentTestTaxa),1]-length(reftree$tip.label)])
+    debug_opt &lt;- 1
+} else {
+    taxonNode &lt;- getMRCA(reftree, presentTestTaxa)
+    nodeToRetrieve &lt;- as.numeric (reftree$node.label[reftree$edge[reftree$edge[,2] == getMRCA(reftree, presentTestTaxa),1]-length(reftree$tip.label)])
+    debug_opt &lt;- 2
+}
+
+write(paste(c(stattable[stattable$ID == nodeToRetrieve,1:8],debug_opt),collapse=&quot;,&quot;),file=&quot;&quot;)</code></pre>
 <ul>
 <li>iqtree_array_concat.sh - slurm script to submit: infer concatenation
 trees</li>

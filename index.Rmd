@@ -182,8 +182,19 @@ cat iqtree/hypothesis_trees/tips_Boreoeutheria.txt
 cat iqtree/hypothesis_trees/tips_Outgroup.txt
 ```
 
-trimTrees.R - script to trim taxa off of the main tree(s) depending on the taxon composition of a particular alignment, run by the previous shell script.
-getSCF.R - script to extract sCF values for the branch of interest from IQ-TREE output, run by the previous shell script.
+### R script: `trimTrees.R`
+* run by previous shell script: `iqtree_array.sh`
+* trim taxa off of the main tree(s) if not included in taxon composition of a particular alignment
+```{bash, comment=NA, echo=FALSE, class.output="bg_R"}
+cat iqtree/trimTrees.R
+```
+
+### R script: `getSCF.R`
+* run by previous shell script: `iqtree_array.sh`
+* extract sCF values for the branch of interest from IQ-TREE output
+```{bash, comment=NA, echo=FALSE, class.output="bg_R"}
+cat iqtree/getSCF.R
+```
 
 
 * iqtree_array_concat.sh - slurm script to submit: infer concatenation trees
