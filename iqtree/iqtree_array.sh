@@ -11,24 +11,34 @@
 
 ## update array line above based on output of iqtree prep script
 
-cd $SLURM_SUBMIT_DIR
+# UPDATE:
+# path to output folder for iqtree:
+array_work_folder=/data/schwartzlab/Biancani/PlacentalPolytomy/output/iqtree_assessment
+# path to FILTERED SISRS loci (aligned contigs) folder:
+aligned_loci_path=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
+#location of iqtree executable:
+iqtree_exe="/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree2"
+# location of iqtree scripts:
+scripts_dir=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree
+# path to file containing alternative hypotheses trees:
+trees_to_eval=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/Placental_Hypotheses.tree
+# Specify taxon list for each hypothesis tree:
+# For Placental root question: Determine which 2 out of 3 groups are sisters for each hypothesis and select one of the sisters.
+# List 1 (Afrotheria Out) = Boreoeutheria
+focal_tips1=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Boreoeutheria.txt
+# List 2 (Boreoeutheria Out) = Afrotheria
+focal_tips2=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Afrotheria.txt
+# List 3 (Xenarthra Out) = Boreoeutheria
+focal_tips3=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Boreoeutheria.txt
+# Outgroup taxa list:
+outgroup_tips=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Outgroup.txt
+
+cd ${array_work_folder}
 
 date
 module load R/4.0.3-foss-2020b
 
 fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p array_list.txt)
-aligned_loci_path="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/aligned_loci/"
-iqtree_exe="/home/aknyshov/alex_data/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree2"
-scripts_dir="/home/aknyshov/alex_data/tree_shew_analysis/TreeshrewProject/iqtree/"
-# trees_to_eval="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/treeshrew_trees_to_fit.tre"
-# focal_tips1="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips.txt"
-# focal_tips2="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips.txt"
-# focal_tips3="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips2.txt"
-trees_to_eval="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/primates_trees_to_fit.tre"
-focal_tips1="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips_primates.txt"
-focal_tips2="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips_primates2.txt"
-focal_tips3="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips_primates.txt"
-outgroup_tips="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/outgroup_tips.txt"
 
 > LnLs_${SLURM_ARRAY_TASK_ID}.csv
 cat ${fileline} | while read line

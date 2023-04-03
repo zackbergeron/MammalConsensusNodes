@@ -1,0 +1,11 @@
+Didelphis_virginiana
+Thylacinus_cynocephalus
+Sarcophilus_harrisii
+Vombatus_ursinus
+Phascolarctos_cinereus
+Phalanger_gymnotis
+Gymnobelideus_leadbeateri
+Pseudochirops_corinnae
+Wallabia_bicolor
+Potorous_gilbertii
+
