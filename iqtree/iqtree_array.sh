@@ -38,13 +38,17 @@ cd ${array_work_folder}
 date
 module load R/4.0.3-foss-2020b
 
+#generate list of filenames for aligned loci:
 fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p array_list.txt)
 
+#create output csv file for each batch fasta file created by prep script (aka each slurm task):
 > LnLs_${SLURM_ARRAY_TASK_ID}.csv
+
 cat ${fileline} | while read line
 do
 	echo $line
 	Rscript ${scripts_dir}trimTrees.R ${aligned_loci_path}/${line} ${trees_to_eval} ./trees_${line}.tre
+	
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -z ./trees_${line}.tre -pre calcLnL_${line} -n 0 -m GTR+G
 	echo $line","$(grep "Tree 1 / LogL:" calcLnL_${line}.log | cut -f2 -d: )","$(grep "Tree 2 / LogL:" calcLnL_${line}.log | cut -f2 -d: )","$(grep "Tree 3 / LogL:" calcLnL_${line}.log | cut -f2 -d: ) >> LnLs_${SLURM_ARRAY_TASK_ID}.csv
 	
