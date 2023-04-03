@@ -24,8 +24,8 @@ scripts_dir=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree
 trees_to_eval=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/Placental_Hypotheses.tree
 # Specify taxon list for each hypothesis tree:
 # For Placental root question: Determine which 2 out of 3 groups are sisters for each hypothesis and select one of the sisters.
-# List 1 (Afrotheria Out) = Boreoeutheria
-focal_tips1=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Boreoeutheria.txt
+# List 1 (Afrotheria Out) = Xenarthra
+focal_tips1=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Xenarthra.txt
 # List 2 (Boreoeutheria Out) = Afrotheria
 focal_tips2=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Afrotheria.txt
 # List 3 (Xenarthra Out) = Boreoeutheria

@@ -1243,24 +1243,34 @@ echo &quot;#SBATCH --array=[1-${arrayN}]%${array_tasks}&quot;</code></pre>
 
 ## update array line above based on output of iqtree prep script
 
-cd $SLURM_SUBMIT_DIR
+# UPDATE:
+# path to output folder for iqtree:
+array_work_folder=/data/schwartzlab/Biancani/PlacentalPolytomy/output/iqtree_assessment
+# path to FILTERED SISRS loci (aligned contigs) folder:
+aligned_loci_path=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
+#location of iqtree executable:
+iqtree_exe=&quot;/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree2&quot;
+# location of iqtree scripts:
+scripts_dir=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree
+# path to file containing alternative hypotheses trees:
+trees_to_eval=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/Placental_Hypotheses.tree
+# Specify taxon list for each hypothesis tree:
+# For Placental root question: Determine which 2 out of 3 groups are sisters for each hypothesis and select one of the sisters.
+# List 1 (Afrotheria Out) = Xenarthra
+focal_tips1=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Xenarthra.txt
+# List 2 (Boreoeutheria Out) = Afrotheria
+focal_tips2=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Afrotheria.txt
+# List 3 (Xenarthra Out) = Boreoeutheria
+focal_tips3=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Boreoeutheria.txt
+# Outgroup taxa list:
+outgroup_tips=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/tips_Outgroup.txt
+
+cd ${array_work_folder}
 
 date
 module load R/4.0.3-foss-2020b
 
 fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p array_list.txt)
-aligned_loci_path=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/aligned_loci/&quot;
-iqtree_exe=&quot;/home/aknyshov/alex_data/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree2&quot;
-scripts_dir=&quot;/home/aknyshov/alex_data/tree_shew_analysis/TreeshrewProject/iqtree/&quot;
-# trees_to_eval=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/treeshrew_trees_to_fit.tre&quot;
-# focal_tips1=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips.txt&quot;
-# focal_tips2=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips.txt&quot;
-# focal_tips3=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips2.txt&quot;
-trees_to_eval=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/primates_trees_to_fit.tre&quot;
-focal_tips1=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips_primates.txt&quot;
-focal_tips2=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips_primates2.txt&quot;
-focal_tips3=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/focal_tips_primates.txt&quot;
-outgroup_tips=&quot;/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing/outgroup_tips.txt&quot;
 
 &gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv
 cat ${fileline} | while read line
@@ -1292,6 +1302,94 @@ do
     rm ./trees_${line}.tre calcLnL_${line}.ckp.gz calcLnL_${line}.iqtree calcLnL_${line}.log calcLnL_${line}.treefile calcLnL_${line}.trees
     rm calcLnL_${line}.uniqueseq.phy
 done</code></pre>
+</div>
+<div id="alternative-hypothesis-trees-placental_hypotheses.tree" class="section level3">
+<h3>Alternative Hypothesis Trees:
+<code>Placental_Hypotheses.tree</code></h3>
+<ul>
+<li>text file containing alternative hypotheses trees (in Newick
+format)</li>
+<li>specify path to this input file in previous shell script:
+<code>iqtree_array.sh</code></li>
+</ul>
+<pre class="bg_text"><code>((((((Chaetophractus_vellerosus,Tolypeutes_matacus),Dasypus_novemcinctus),((Tamandua_tetradactyla,Myrmecophaga_tridactyla),(Choloepus_didactylus,Mylodon_darwinii))),((((Tupaia_tana,Rattus_norvegicus),Pan_troglodytes),Galeopterus_variegatus),((((Pteropus_vampyrus,Hippopotamus_amphibius),(Odobenus_rosmarus_divergens,Manis_javanica)),Ceratotherium_simum),Condylura_cristata))),(((((Echinops_telfairi,Microgale_talazaci),(Chrysochloris_asiatica,Amblysomus_hottentotus_longiceps)),Elephantulus_edwardii),Orycteropus_afer),((Trichechus_manatus_latirostris,Hydrodamalis_gigas),(Loxodonta_africana,Procavia_capensis)))),((((((Potorous_gilbertii,Wallabia_bicolor),(Pseudochirops_corinnae,Gymnobelideus_leadbeateri)),Phalanger_gymnotis),(Phascolarctos_cinereus,Vombatus_ursinus)),(Sarcophilus_harrisii,Thylacinus_cynocephalus)),Didelphis_virginiana));
+((((((((Echinops_telfairi,Microgale_talazaci),(Chrysochloris_asiatica,Amblysomus_hottentotus_longiceps)),Elephantulus_edwardii),Orycteropus_afer),((Trichechus_manatus_latirostris,Hydrodamalis_gigas),(Loxodonta_africana,Procavia_capensis))),(((Chaetophractus_vellerosus,Tolypeutes_matacus),Dasypus_novemcinctus),((Tamandua_tetradactyla,Myrmecophaga_tridactyla),(Choloepus_didactylus,Mylodon_darwinii)))),((((Tupaia_tana,Rattus_norvegicus),Pan_troglodytes),Galeopterus_variegatus),((((Pteropus_vampyrus,Hippopotamus_amphibius),(Odobenus_rosmarus_divergens,Manis_javanica)),Ceratotherium_simum),Condylura_cristata))),((((((Potorous_gilbertii,Wallabia_bicolor),(Pseudochirops_corinnae,Gymnobelideus_leadbeateri)),Phalanger_gymnotis),(Phascolarctos_cinereus,Vombatus_ursinus)),(Sarcophilus_harrisii,Thylacinus_cynocephalus)),Didelphis_virginiana));
+((((((((Echinops_telfairi,Microgale_talazaci),(Chrysochloris_asiatica,Amblysomus_hottentotus_longiceps)),Elephantulus_edwardii),Orycteropus_afer),((Trichechus_manatus_latirostris,Hydrodamalis_gigas),(Loxodonta_africana,Procavia_capensis))),((((Tupaia_tana,Rattus_norvegicus),Pan_troglodytes),Galeopterus_variegatus),((((Pteropus_vampyrus,Hippopotamus_amphibius),(Odobenus_rosmarus_divergens,Manis_javanica)),Ceratotherium_simum),Condylura_cristata))),(((Chaetophractus_vellerosus,Tolypeutes_matacus),Dasypus_novemcinctus),((Tamandua_tetradactyla,Myrmecophaga_tridactyla),(Choloepus_didactylus,Mylodon_darwinii)))),((((((Potorous_gilbertii,Wallabia_bicolor),(Pseudochirops_corinnae,Gymnobelideus_leadbeateri)),Phalanger_gymnotis),(Phascolarctos_cinereus,Vombatus_ursinus)),(Sarcophilus_harrisii,Thylacinus_cynocephalus)),Didelphis_virginiana));</code></pre>
+</div>
+<div id="specify-a-list-of-focal-taxa-for-each-hypothesis-tree" class="section level2">
+<h2>Specify a list of “focal taxa” for each hypothesis tree:</h2>
+<ul>
+<li>For Placental root topology question: Determine which 2 out of 3
+groups are sisters for each hypothesis and select one of these 2 sister
+groups.</li>
+</ul>
+<div id="focal-taxa-for-tree-1-tips_xenarthra.txt" class="section level3">
+<h3>Focal taxa for tree 1: <code>tips_Xenarthra.txt</code></h3>
+<ul>
+<li>Tree 1 = Afrotheria Out, focal taxa = Xenarthra</li>
+<li>specify path to this input file in previous shell script:
+<code>iqtree_array.sh</code></li>
+</ul>
+<pre class="bg_text"><code>Mylodon_darwinii
+Choloepus_didactylus
+Myrmecophaga_tridactyla
+Tamandua_tetradactyla
+Dasypus_novemcinctus
+Tolypeutes_matacus
+Chaetophractus_vellerosus</code></pre>
+</div>
+<div id="focal-taxa-for-tree-2-tips_afrotheria.txt" class="section level3">
+<h3>Focal taxa for tree 2: <code>tips_Afrotheria.txt</code></h3>
+<ul>
+<li>Tree 2 = Boreoeutheria Out, focal taxa = Afrotheria</li>
+<li>specify path to this input file in previous shell script:
+<code>iqtree_array.sh</code></li>
+</ul>
+<pre class="bg_text"><code>Procavia_capensis
+Loxodonta_africana
+Hydrodamalis_gigas
+Trichechus_manatus_latirostris
+Orycteropus_afer
+Elephantulus_edwardii
+Amblysomus_hottentotus_longiceps
+Chrysochloris_asiatica
+Microgale_talazaci
+Echinops_telfairi</code></pre>
+</div>
+<div id="focal-taxa-for-tree-3-tips_boreoeutheria.txt" class="section level3">
+<h3>Focal taxa for tree 3: <code>tips_Boreoeutheria.txt</code></h3>
+<ul>
+<li>Tree 3 = Xenarthra Out, focal taxa = Boreoeutheria</li>
+<li>specify path to this input file in previous shell script:
+<code>iqtree_array.sh</code></li>
+</ul>
+<pre class="bg_text"><code>Condylura_cristata
+Ceratotherium_simum
+Manis_javanica
+Odobenus_rosmarus_divergens
+Hippopotamus_amphibius
+Pteropus_vampyrus
+Galeopterus_variegatus
+Pan_troglodytes
+Rattus_norvegicus
+Tupaia_tana</code></pre>
+</div>
+<div id="outgroup-taxa-list-tips_outgroup.txt" class="section level3">
+<h3>Outgroup taxa list: <code>tips_Outgroup.txt</code></h3>
+<ul>
+<li>specify path to this input file in previous shell script:
+<code>iqtree_array.sh</code></li>
+</ul>
+<pre class="bg_text"><code>Didelphis_virginiana
+Thylacinus_cynocephalus
+Sarcophilus_harrisii
+Vombatus_ursinus
+Phascolarctos_cinereus
+Phalanger_gymnotis
+Gymnobelideus_leadbeateri
+Pseudochirops_corinnae
+Wallabia_bicolor
+Potorous_gilbertii</code></pre>
 <ul>
 <li>iqtree_array_concat.sh - slurm script to submit: infer concatenation
 trees</li>
@@ -1309,6 +1407,7 @@ shell script.</li>
 <li>getSCF.R - script to extract sCF values for the branch of interest
 from IQ-TREE output, run by the previous shell script.</li>
 </ul>
+</div>
 </div>
 </div>
 
