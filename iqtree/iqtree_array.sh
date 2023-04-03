@@ -5,7 +5,11 @@
 #SBATCH --ntasks-per-node=1   # processor core(s) per node
 #SBATCH -c 1
 #SBATCH --mem-per-cpu=6G
+#SBATCH --array=[1-28]%28
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
 
+## update array line above based on output of iqtree prep script
 
 cd $SLURM_SUBMIT_DIR
 
