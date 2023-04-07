@@ -1289,30 +1289,30 @@ do
     echo $line
     Rscript ${scripts_dir}trimTrees.R ${aligned_loci_path}/${line} ${trees_to_eval} ./trees_${line}.tre
     
-    #ML on 3 trees
-    ${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -z ./trees_${line}.tre -pre calcLnL_${line} -n 0 -m GTR+G
-    echo $line&quot;,&quot;$(grep &quot;Tree 1 / LogL:&quot; calcLnL_${line}.log | cut -f2 -d: )&quot;,&quot;$(grep &quot;Tree 2 / LogL:&quot; calcLnL_${line}.log | cut -f2 -d: )&quot;,&quot;$(grep &quot;Tree 3 / LogL:&quot; calcLnL_${line}.log | cut -f2 -d: ) &gt;&gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv
-    
-    #estimate tree on constraints (sed collapsed tree)
-    
-    sed -n 1p ./trees_${line}.tre &gt; ./tree1_${line}.tre
+    sed -n 1p ./trees_${line}.tre &gt; ./tree1_${line}.tre # select constraint tree from tree file
     ${iqtree_exe} -nt 1 -t ./tree1_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord1_${line}
-    rm ./tree1_${line}.tre
     echo &quot;ID,sCF,sCF_N,sDF1,sDF1_N,sDF2,sDF2_N,sN,debug&quot; &gt; scf/scf_${line}
     Rscript ${scripts_dir}getSCF.R concord1_${line}.cf.branch concord1_${line}.cf.stat ${focal_tips1} ${outgroup_tips} &gt;&gt; scf/scf_${line}
+    ${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre calcLnL_${line} -g ./tree1_${line}.tre -m GTR+G -redo
+    echo $line&quot;,&quot;$(grep &quot;BEST SCORE FOUND&quot; calcLnL_${line}.log | cut -f2 -d: ) &gt;&gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv
     rm concord1_${line}.log concord1_${line}.cf.branch concord1_${line}.cf.stat concord1_${line}.cf.tree concord1_${line}.cf.tree.nex
+    rm ./tree1_${line}.tre
     
     sed -n 2p ./trees_${line}.tre &gt; ./tree2_${line}.tre
     ${iqtree_exe} -nt 1 -t ./tree2_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord2_${line}
-    rm ./tree2_${line}.tre
     Rscript ${scripts_dir}getSCF.R concord2_${line}.cf.branch concord2_${line}.cf.stat ${focal_tips2} ${outgroup_tips} &gt;&gt; scf/scf_${line}
+    ${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre calcLnL_${line} -g ./tree2_${line}.tre -m GTR+G -redo
+    echo $line&quot;,&quot;$(grep &quot;BEST SCORE FOUND&quot; calcLnL_${line}.log | cut -f2 -d: ) &gt;&gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv
     rm concord2_${line}.log concord2_${line}.cf.branch concord2_${line}.cf.stat concord2_${line}.cf.tree concord2_${line}.cf.tree.nex
+    rm ./tree2_${line}.tre
 
     sed -n 3p ./trees_${line}.tre &gt; ./tree3_${line}.tre
     ${iqtree_exe} -nt 1 -t ./tree3_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord3_${line}
-    rm ./tree3_${line}.tre
     Rscript ${scripts_dir}getSCF.R concord3_${line}.cf.branch concord3_${line}.cf.stat ${focal_tips3} ${outgroup_tips} &gt;&gt; scf/scf_${line}
+    ${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre calcLnL_${line} -g ./tree3_${line}.tre -m GTR+G -redo
+    echo $line&quot;,&quot;$(grep &quot;BEST SCORE FOUND&quot; calcLnL_${line}.log | cut -f2 -d: ) &gt;&gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv
     rm concord3_${line}.log concord3_${line}.cf.branch concord3_${line}.cf.stat concord3_${line}.cf.tree concord3_${line}.cf.tree.nex
+    rm ./tree3_${line}.tre
     
     rm ./trees_${line}.tre calcLnL_${line}.ckp.gz calcLnL_${line}.iqtree calcLnL_${line}.log calcLnL_${line}.treefile calcLnL_${line}.trees
     rm calcLnL_${line}.uniqueseq.phy
@@ -1344,9 +1344,13 @@ as constraint trees in IQtree</p>
 format)</li>
 <li>specify path to this input file in previous shell script:
 <code>iqtree_array.sh</code></li>
-<li>Keep note of tree order in file. For this analysis Tree 1 =
-Afrotheria Out, Tree 2 = Boreoeutheria Out, Tree 3 = Xenarthra Out</li>
+<li>Keep note of tree order in file:</li>
 </ul>
+<ol style="list-style-type: decimal">
+<li>Afrotheria out (Boreoeutheria and Xenarthra are sisters)</li>
+<li>Boreoeutheria out (Afrotheria and Xenarthra are sisters)</li>
+<li>Xenarthra out (Afrotheria and Boreoeutheria are sisters)</li>
+</ol>
 <pre class="bg_text"><code>((((Mylodon_darwinii,Choloepus_didactylus,Myrmecophaga_tridactyla,Tamandua_tetradactyla,Dasypus_novemcinctus,Tolypeutes_matacus,Chaetophractus_vellerosus),(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)),(Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi)),(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursinus,Phascolarctos_cinereus,Phalanger_gymnotis,Gymnobelideus_leadbeateri,Pseudochirops_corinnae,Wallabia_bicolor,Potorous_gilbertii));
 ((((Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi),(Mylodon_darwinii,Choloellerosus)),(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)),(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursinus,Phascolarctos_cinereus,Phalanger_gymnotis,Gymnobelideus_leadbeateri,Pseudochirops_corinnae,Wallabia_bicolor,Potorous_gilbertii));
 ((((Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi),(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)),(Mylodon_darwinii,Choloepus_didactylus,Myrmecophaga_tridactyla,Tamandua_tetradactyla,Dasypus_novemcinctus,Tolypeutes_matacus,Chaetophractus_vellerosus)),(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursiirops_corinnae,Wallabia_bicolor,Potorous_gilbertii));</code></pre>

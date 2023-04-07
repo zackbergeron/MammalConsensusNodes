@@ -177,7 +177,10 @@ XENARTHRA:
 ### Alternative Hypothesis Trees: `Polytomy_Placental_Hypotheses.tree`
 * text file containing alternative hypotheses trees (in Newick format)
 * specify path to this input file in previous shell script: `iqtree_array.sh`
-* Keep note of tree order in file. For this analysis Tree 1 = Afrotheria Out, Tree 2 = Boreoeutheria Out, Tree 3 = Xenarthra Out
+* Keep note of tree order in file:
+1. Afrotheria out (Boreoeutheria and Xenarthra are sisters)
+2. Boreoeutheria out (Afrotheria and Xenarthra are sisters)
+3. Xenarthra out (Afrotheria and Boreoeutheria are sisters)
 ```{bash, comment=NA, echo=FALSE, class.output="bg_text"}
 cat iqtree/hypothesis_trees/Polytomy_Placental_Hypotheses.tree
 ```
