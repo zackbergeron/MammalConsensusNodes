@@ -185,8 +185,8 @@ XENARTHRA:
 cat iqtree/hypothesis_trees/Polytomy_Placental_Hypotheses.tree
 ```
 
-## Specify a list of "focal taxa" for each hypothesis tree:
-* For Placental root topology question: Determine which 2 out of 3 groups are sisters for each hypothesis and select one of these 2 sister groups.
+## Specify a list of focal taxa for each hypothesis tree:
+* For placental root topology question: determine which 2 out of 3 groups are sisters for each hypothesis and select one of these 2 sister groups.
 
 ### Focal taxa for tree 1: `tips_Xenarthra.txt`
 * Tree 1 = Afrotheria Out, focal taxa = Xenarthra

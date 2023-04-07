@@ -1293,8 +1293,8 @@ do
     ${iqtree_exe} -nt 1 -t ./tree1_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord1_${line}
     echo &quot;ID,sCF,sCF_N,sDF1,sDF1_N,sDF2,sDF2_N,sN,debug&quot; &gt; scf/scf_${line}
     Rscript ${scripts_dir}getSCF.R concord1_${line}.cf.branch concord1_${line}.cf.stat ${focal_tips1} ${outgroup_tips} &gt;&gt; scf/scf_${line}
-    ${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre calcLnL_${line} -g ./tree1_${line}.tre -m GTR+G -redo
-    echo $line&quot;,&quot;$(grep &quot;BEST SCORE FOUND&quot; calcLnL_${line}.log | cut -f2 -d: ) &gt;&gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv
+    ${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre calcLnL_${line} -g ./tree1_${line}.tre -m GTR+G -redo #calculate likelihoods
+    echo $line&quot;,&quot;$(grep &quot;BEST SCORE FOUND&quot; calcLnL_${line}.log | cut -f2 -d: ) &gt;&gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv #pulls likelihood from file
     rm concord1_${line}.log concord1_${line}.cf.branch concord1_${line}.cf.stat concord1_${line}.cf.tree concord1_${line}.cf.tree.nex
     rm ./tree1_${line}.tre
     
@@ -1356,9 +1356,9 @@ format)</li>
 ((((Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi),(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)),(Mylodon_darwinii,Choloepus_didactylus,Myrmecophaga_tridactyla,Tamandua_tetradactyla,Dasypus_novemcinctus,Tolypeutes_matacus,Chaetophractus_vellerosus)),(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursiirops_corinnae,Wallabia_bicolor,Potorous_gilbertii));</code></pre>
 </div>
 <div id="specify-a-list-of-focal-taxa-for-each-hypothesis-tree" class="section level2">
-<h2>Specify a list of “focal taxa” for each hypothesis tree:</h2>
+<h2>Specify a list of focal taxa for each hypothesis tree:</h2>
 <ul>
-<li>For Placental root topology question: Determine which 2 out of 3
+<li>For placental root topology question: determine which 2 out of 3
 groups are sisters for each hypothesis and select one of these 2 sister
 groups.</li>
 </ul>
@@ -1475,10 +1475,10 @@ if (argsLen == 0){
   cat(&quot;Example: Rscript getSCF.R test.cf.branch test.cf.stat tipsToAnalyse.txt outgroup.txt\n&quot;)
   quit()
 }
-reftree &lt;- read.tree(args[1])
-stattable &lt;- read.table(args[2],header=TRUE, fill=TRUE)
-filtertaxa &lt;- readLines(args[3])
-outtaxa &lt;- readLines(args[4])
+reftree &lt;- read.tree(args[1]) #tree
+stattable &lt;- read.table(args[2],header=TRUE, fill=TRUE) # from iqtree
+filtertaxa &lt;- readLines(args[3]) # focal tips
+outtaxa &lt;- readLines(args[4]) # out tips
 
 #since IQ-TREE occasionally reroots trees, have to reroot back by outgroup in order for the results to make sense
 presentouttaxa &lt;- reftree$tip.label[reftree$tip.label %in% outtaxa]
@@ -1489,20 +1489,28 @@ if (length(presentouttaxa) == 1){
     outgroupMRCA &lt;- getMRCA(reftree, presentouttaxa)
 }
 if (outgroupMRCA != reftree$edge[1,1]){
-    reftree &lt;- root(reftree, node= outgroupMRCA, edgelabel = T)
+    reftree &lt;- root(reftree, node= outgroupMRCA, edgelabel = T, resolve.root=TRUE) # resolve root command added to ensure correct rooting with outgroup taxa
 }
 
-presentTestTaxa &lt;- reftree$tip.label[reftree$tip.label %in% filtertaxa]
+# Locate the node of interest:
+presentTestTaxa &lt;- reftree$tip.label[reftree$tip.label %in% filtertaxa] # focal taxa represented by current contig - subsets list of focal taxa
+# Find the MRCA of the focal taxa and select ONE NODE DEEPER
 if (length(presentTestTaxa) == 1) {
     nodeToRetrieve &lt;- as.numeric (reftree$node.label[reftree$edge[reftree$edge[,2] == which (reftree$tip.label %in% presentTestTaxa),1]-length(reftree$tip.label)])
     debug_opt &lt;- 1
 } else {
-    taxonNode &lt;- getMRCA(reftree, presentTestTaxa)
-    nodeToRetrieve &lt;- as.numeric (reftree$node.label[reftree$edge[reftree$edge[,2] == getMRCA(reftree, presentTestTaxa),1]-length(reftree$tip.label)])
+    taxonNode &lt;- getMRCA(reftree, presentTestTaxa) # MRCA of focal taxa ## (Node of interest for Zack&#39;s question)
+    OneNodeDeeper &lt;- reftree$edge[reftree$edge[,2] == taxonNode,1]
+    #find corresponding node in stat table (because node numbers are different in R and change at rooting):
+    nodeToRetrieve &lt;- as.numeric (reftree$node.label[OneNodeDeeper-length(reftree$tip.label)])
+    #for Zach:
+    #nodeToRetrieve &lt;- as.numeric (reftree$node.label[taxonNode-length(reftree$tip.label)])
     debug_opt &lt;- 2
 }
 
-write(paste(c(stattable[stattable$ID == nodeToRetrieve,1:8],debug_opt),collapse=&quot;,&quot;),file=&quot;&quot;)</code></pre>
+SCFofInterest &lt;- stattable[stattable$ID == nodeToRetrieve,1:8]
+#writes to standard out which is redirected (by iqtree_array.sh) to an scf_contigID file
+write(paste(c(SCFofInterest,debug_opt),collapse=&quot;,&quot;),file=&quot;&quot;)</code></pre>
 <ul>
 <li>iqtree_array_concat.sh - slurm script to submit: infer concatenation
 trees</li>

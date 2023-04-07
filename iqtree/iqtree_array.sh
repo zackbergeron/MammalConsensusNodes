@@ -53,8 +53,8 @@ do
 	${iqtree_exe} -nt 1 -t ./tree1_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord1_${line}
 	echo "ID,sCF,sCF_N,sDF1,sDF1_N,sDF2,sDF2_N,sN,debug" > scf/scf_${line}
 	Rscript ${scripts_dir}getSCF.R concord1_${line}.cf.branch concord1_${line}.cf.stat ${focal_tips1} ${outgroup_tips} >> scf/scf_${line}
-	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre calcLnL_${line} -g ./tree1_${line}.tre -m GTR+G -redo
-	echo $line","$(grep "BEST SCORE FOUND" calcLnL_${line}.log | cut -f2 -d: ) >> LnLs_${SLURM_ARRAY_TASK_ID}.csv
+	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre calcLnL_${line} -g ./tree1_${line}.tre -m GTR+G -redo #calculate likelihoods
+	echo $line","$(grep "BEST SCORE FOUND" calcLnL_${line}.log | cut -f2 -d: ) >> LnLs_${SLURM_ARRAY_TASK_ID}.csv #pulls likelihood from file
 	rm concord1_${line}.log concord1_${line}.cf.branch concord1_${line}.cf.stat concord1_${line}.cf.tree concord1_${line}.cf.tree.nex
 	rm ./tree1_${line}.tre
 	
