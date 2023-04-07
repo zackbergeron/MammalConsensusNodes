@@ -33,5 +33,4 @@ if [ $arrayN -lt $array_tasks ]
       array_tasks=$arrayN
 fi
 
-#echo "sbatch --array=1-${arrayN}%{array_tasks} ${scripts_dir}iqtree_array.sh""
 echo "#SBATCH --array=[1-${arrayN}]%${array_tasks}"

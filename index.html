@@ -380,8 +380,8 @@ background-color: honeydew;
 border: 1px solid black;
 }
 
-.bg_R {
-background-color lightsteelblue;
+.bg_Rcode {
+background-color: lightsteelblue;
 border: 1px solid black;
 }
 </style>
@@ -1220,7 +1220,6 @@ if [ $arrayN -lt $array_tasks ]
       array_tasks=$arrayN
 fi
 
-#echo &quot;sbatch --array=1-${arrayN}%{array_tasks} ${scripts_dir}iqtree_array.sh&quot;&quot;
 echo &quot;#SBATCH --array=[1-${arrayN}]%${array_tasks}&quot;</code></pre>
 </div>
 <div id="slurm-submission-script-iqtree_array.sh" class="section level3">
@@ -1228,6 +1227,7 @@ echo &quot;#SBATCH --array=[1-${arrayN}]%${array_tasks}&quot;</code></pre>
 <ul>
 <li>runs the following R scripts: <code>trimTrees.R</code>,
 <code>getSCF.R</code></li>
+<li>update paths to specified input files (described below)</li>
 <li>generates CSV files (one for each batch fasta file created by prep
 script) in the <code>$array_work_dir</code></li>
 <li>CSV files contain likelihoods scores for each hypothesis (3 scores)
@@ -1261,7 +1261,7 @@ iqtree_exe=&quot;/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/i
 # location of iqtree scripts:
 scripts_dir=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree
 # path to file containing alternative hypotheses trees:
-trees_to_eval=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/Placental_Hypotheses.tree
+trees_to_eval=/data/schwartzlab/Biancani/PlacentalPolytomy/iqtree/hypothesis_trees/Polytomy_Placental_Hypotheses.tree
 # Specify taxon list for each hypothesis tree:
 # For Placental root question: Determine which 2 out of 3 groups are sisters for each hypothesis and select one of the sisters.
 # List 1 (Afrotheria Out) = Xenarthra
@@ -1289,8 +1289,11 @@ do
     echo $line
     Rscript ${scripts_dir}trimTrees.R ${aligned_loci_path}/${line} ${trees_to_eval} ./trees_${line}.tre
     
+    #ML on 3 trees
     ${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -z ./trees_${line}.tre -pre calcLnL_${line} -n 0 -m GTR+G
     echo $line&quot;,&quot;$(grep &quot;Tree 1 / LogL:&quot; calcLnL_${line}.log | cut -f2 -d: )&quot;,&quot;$(grep &quot;Tree 2 / LogL:&quot; calcLnL_${line}.log | cut -f2 -d: )&quot;,&quot;$(grep &quot;Tree 3 / LogL:&quot; calcLnL_${line}.log | cut -f2 -d: ) &gt;&gt; LnLs_${SLURM_ARRAY_TASK_ID}.csv
+    
+    #estimate tree on constraints (sed collapsed tree)
     
     sed -n 1p ./trees_${line}.tre &gt; ./tree1_${line}.tre
     ${iqtree_exe} -nt 1 -t ./tree1_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord1_${line}
@@ -1315,18 +1318,38 @@ do
     rm calcLnL_${line}.uniqueseq.phy
 done</code></pre>
 </div>
-<div id="alternative-hypothesis-trees-placental_hypotheses.tree" class="section level3">
+<div id="topology-constraints" class="section level3">
+<h3>Topology Constraints</h3>
+<p>Collapsed trees were created for each alternative hypothesis and used
+as constraint trees in IQtree</p>
+<p>Scaffold hypotheis trees:</p>
+<pre><code>(((XENARTHRA,BOREOEUTHERIA),AFROTHERIA),METATHERIA);
+(((AFROTHERIA,XENARTHRA),BOREOEUTHERIA),METATHERIA);
+(((AFROTHERIA,BOREOEUTHERIA),XENARTHRA),METATHERIA);</code></pre>
+<p>Individual collapsed nodes:</p>
+<p>METATHERIA:</p>
+<pre><code>(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursinus,Phascolarctos_cinereus,Phalanger_gymnotis,Gymnobelideus_leadbeateri,Pseudochirops_corinnae,Wallabia_bicolor,Potorous_gilbertii)</code></pre>
+<p>AFROTHERIA:</p>
+<pre><code>(Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi)</code></pre>
+<p>BOREOEUTHERIA:</p>
+<pre><code>(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)</code></pre>
+<p>XENARTHRA:</p>
+<pre><code>(Mylodon_darwinii,Choloepus_didactylus,Myrmecophaga_tridactyla,Tamandua_tetradactyla,Dasypus_novemcinctus,Tolypeutes_matacus,Chaetophractus_vellerosus)</code></pre>
+</div>
+<div id="alternative-hypothesis-trees-polytomy_placental_hypotheses.tree" class="section level3">
 <h3>Alternative Hypothesis Trees:
-<code>Placental_Hypotheses.tree</code></h3>
+<code>Polytomy_Placental_Hypotheses.tree</code></h3>
 <ul>
 <li>text file containing alternative hypotheses trees (in Newick
 format)</li>
 <li>specify path to this input file in previous shell script:
 <code>iqtree_array.sh</code></li>
+<li>Keep note of tree order in file. For this analysis Tree 1 =
+Afrotheria Out, Tree 2 = Boreoeutheria Out, Tree 3 = Xenarthra Out</li>
 </ul>
-<pre class="bg_text"><code>((((((Chaetophractus_vellerosus,Tolypeutes_matacus),Dasypus_novemcinctus),((Tamandua_tetradactyla,Myrmecophaga_tridactyla),(Choloepus_didactylus,Mylodon_darwinii))),((((Tupaia_tana,Rattus_norvegicus),Pan_troglodytes),Galeopterus_variegatus),((((Pteropus_vampyrus,Hippopotamus_amphibius),(Odobenus_rosmarus_divergens,Manis_javanica)),Ceratotherium_simum),Condylura_cristata))),(((((Echinops_telfairi,Microgale_talazaci),(Chrysochloris_asiatica,Amblysomus_hottentotus_longiceps)),Elephantulus_edwardii),Orycteropus_afer),((Trichechus_manatus_latirostris,Hydrodamalis_gigas),(Loxodonta_africana,Procavia_capensis)))),((((((Potorous_gilbertii,Wallabia_bicolor),(Pseudochirops_corinnae,Gymnobelideus_leadbeateri)),Phalanger_gymnotis),(Phascolarctos_cinereus,Vombatus_ursinus)),(Sarcophilus_harrisii,Thylacinus_cynocephalus)),Didelphis_virginiana));
-((((((((Echinops_telfairi,Microgale_talazaci),(Chrysochloris_asiatica,Amblysomus_hottentotus_longiceps)),Elephantulus_edwardii),Orycteropus_afer),((Trichechus_manatus_latirostris,Hydrodamalis_gigas),(Loxodonta_africana,Procavia_capensis))),(((Chaetophractus_vellerosus,Tolypeutes_matacus),Dasypus_novemcinctus),((Tamandua_tetradactyla,Myrmecophaga_tridactyla),(Choloepus_didactylus,Mylodon_darwinii)))),((((Tupaia_tana,Rattus_norvegicus),Pan_troglodytes),Galeopterus_variegatus),((((Pteropus_vampyrus,Hippopotamus_amphibius),(Odobenus_rosmarus_divergens,Manis_javanica)),Ceratotherium_simum),Condylura_cristata))),((((((Potorous_gilbertii,Wallabia_bicolor),(Pseudochirops_corinnae,Gymnobelideus_leadbeateri)),Phalanger_gymnotis),(Phascolarctos_cinereus,Vombatus_ursinus)),(Sarcophilus_harrisii,Thylacinus_cynocephalus)),Didelphis_virginiana));
-((((((((Echinops_telfairi,Microgale_talazaci),(Chrysochloris_asiatica,Amblysomus_hottentotus_longiceps)),Elephantulus_edwardii),Orycteropus_afer),((Trichechus_manatus_latirostris,Hydrodamalis_gigas),(Loxodonta_africana,Procavia_capensis))),((((Tupaia_tana,Rattus_norvegicus),Pan_troglodytes),Galeopterus_variegatus),((((Pteropus_vampyrus,Hippopotamus_amphibius),(Odobenus_rosmarus_divergens,Manis_javanica)),Ceratotherium_simum),Condylura_cristata))),(((Chaetophractus_vellerosus,Tolypeutes_matacus),Dasypus_novemcinctus),((Tamandua_tetradactyla,Myrmecophaga_tridactyla),(Choloepus_didactylus,Mylodon_darwinii)))),((((((Potorous_gilbertii,Wallabia_bicolor),(Pseudochirops_corinnae,Gymnobelideus_leadbeateri)),Phalanger_gymnotis),(Phascolarctos_cinereus,Vombatus_ursinus)),(Sarcophilus_harrisii,Thylacinus_cynocephalus)),Didelphis_virginiana));</code></pre>
+<pre class="bg_text"><code>((((Mylodon_darwinii,Choloepus_didactylus,Myrmecophaga_tridactyla,Tamandua_tetradactyla,Dasypus_novemcinctus,Tolypeutes_matacus,Chaetophractus_vellerosus),(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)),(Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi)),(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursinus,Phascolarctos_cinereus,Phalanger_gymnotis,Gymnobelideus_leadbeateri,Pseudochirops_corinnae,Wallabia_bicolor,Potorous_gilbertii));
+((((Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi),(Mylodon_darwinii,Choloellerosus)),(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)),(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursinus,Phascolarctos_cinereus,Phalanger_gymnotis,Gymnobelideus_leadbeateri,Pseudochirops_corinnae,Wallabia_bicolor,Potorous_gilbertii));
+((((Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi),(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)),(Mylodon_darwinii,Choloepus_didactylus,Myrmecophaga_tridactyla,Tamandua_tetradactyla,Dasypus_novemcinctus,Tolypeutes_matacus,Chaetophractus_vellerosus)),(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursiirops_corinnae,Wallabia_bicolor,Potorous_gilbertii));</code></pre>
 </div>
 <div id="specify-a-list-of-focal-taxa-for-each-hypothesis-tree" class="section level2">
 <h2>Specify a list of “focal taxa” for each hypothesis tree:</h2>
@@ -1410,7 +1433,7 @@ Potorous_gilbertii</code></pre>
 <li>trim taxa off of the main tree(s) if not included in taxon
 composition of a particular alignment</li>
 </ul>
-<pre class="bg_R"><code>library (ape)
+<pre class="bg_Rcode"><code>library (ape)
 args = commandArgs(trailingOnly=TRUE)
 argsLen &lt;- length(args);
 if (argsLen == 0){
@@ -1440,7 +1463,7 @@ write.tree(outtrees, outtreesname)</code></pre>
 <li>extract sCF values for the branch of interest from IQ-TREE
 output</li>
 </ul>
-<pre class="bg_R"><code>library (ape)
+<pre class="bg_Rcode"><code>library (ape)
 args = commandArgs(trailingOnly=TRUE)
 argsLen &lt;- length(args);
 if (argsLen == 0){

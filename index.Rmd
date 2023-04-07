@@ -21,9 +21,9 @@ output: html_document
   background-color: honeydew;
   border: 1px solid black;
 }
-/* Define a background class for displaying content of R files */
-.bg_R {
-  background-color lightsteelblue;
+/* Define a background class for displaying content of text files */
+.bg_Rcode {
+  background-color: lightsteelblue;
   border: 1px solid black;
 }
 ```
@@ -136,6 +136,7 @@ cat iqtree/iqtree_prep.sh
 
 ### Slurm submission script: `iqtree_array.sh`
 * runs the following R scripts: `trimTrees.R`, `getSCF.R`
+* update paths to specified input files (described below)
 * generates CSV files (one for each batch fasta file created by prep script) in the `$array_work_dir`
 * CSV files contain likelihoods scores for each hypothesis (3 scores) for every Locus
 * generates SCF files (one fore each contig) in `scf` folder
@@ -145,11 +146,40 @@ cat iqtree/iqtree_prep.sh
 cat iqtree/iqtree_array.sh
 ```
 
-### Alternative Hypothesis Trees: `Placental_Hypotheses.tree`
+### Topology Constraints
+Collapsed trees were created for each alternative hypothesis and used as constraint trees in IQtree
+
+Scaffold hypotheis trees:
+```
+(((XENARTHRA,BOREOEUTHERIA),AFROTHERIA),METATHERIA);
+(((AFROTHERIA,XENARTHRA),BOREOEUTHERIA),METATHERIA);
+(((AFROTHERIA,BOREOEUTHERIA),XENARTHRA),METATHERIA);
+```
+Individual collapsed nodes:
+
+METATHERIA:
+```
+(Didelphis_virginiana,Thylacinus_cynocephalus,Sarcophilus_harrisii,Vombatus_ursinus,Phascolarctos_cinereus,Phalanger_gymnotis,Gymnobelideus_leadbeateri,Pseudochirops_corinnae,Wallabia_bicolor,Potorous_gilbertii)
+```
+AFROTHERIA:
+```
+(Procavia_capensis,Loxodonta_africana,Hydrodamalis_gigas,Trichechus_manatus_latirostris,Orycteropus_afer,Elephantulus_edwardii,Amblysomus_hottentotus_longiceps,Chrysochloris_asiatica,Microgale_talazaci,Echinops_telfairi)
+```
+BOREOEUTHERIA:
+```
+(Condylura_cristata,Ceratotherium_simum,Manis_javanica,Odobenus_rosmarus_divergens,Hippopotamus_amphibius,Pteropus_vampyrus,Galeopterus_variegatus,Pan_troglodytes,Rattus_norvegicus,Tupaia_tana)
+```
+XENARTHRA:
+```
+(Mylodon_darwinii,Choloepus_didactylus,Myrmecophaga_tridactyla,Tamandua_tetradactyla,Dasypus_novemcinctus,Tolypeutes_matacus,Chaetophractus_vellerosus)
+```
+
+### Alternative Hypothesis Trees: `Polytomy_Placental_Hypotheses.tree`
 * text file containing alternative hypotheses trees (in Newick format)
 * specify path to this input file in previous shell script: `iqtree_array.sh`
+* Keep note of tree order in file. For this analysis Tree 1 = Afrotheria Out, Tree 2 = Boreoeutheria Out, Tree 3 = Xenarthra Out
 ```{bash, comment=NA, echo=FALSE, class.output="bg_text"}
-cat iqtree/hypothesis_trees/Placental_Hypotheses.tree
+cat iqtree/hypothesis_trees/Polytomy_Placental_Hypotheses.tree
 ```
 
 ## Specify a list of "focal taxa" for each hypothesis tree:
@@ -185,14 +215,14 @@ cat iqtree/hypothesis_trees/tips_Outgroup.txt
 ### R script: `trimTrees.R`
 * run by previous shell script: `iqtree_array.sh`
 * trim taxa off of the main tree(s) if not included in taxon composition of a particular alignment
-```{bash, comment=NA, echo=FALSE, class.output="bg_R"}
+```{bash, comment=NA, echo=FALSE, class.output="bg_Rcode"}
 cat iqtree/trimTrees.R
 ```
 
 ### R script: `getSCF.R`
 * run by previous shell script: `iqtree_array.sh`
 * extract sCF values for the branch of interest from IQ-TREE output
-```{bash, comment=NA, echo=FALSE, class.output="bg_R"}
+```{bash, comment=NA, echo=FALSE, class.output="bg_Rcode"}
 cat iqtree/getSCF.R
 ```
 
