@@ -47,7 +47,7 @@ fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p array_list.txt)
 cat ${fileline} | while read line
 do
 	echo $line
-	Rscript ${scripts_dir}trimTrees.R ${aligned_loci_path}/${line} ${trees_to_eval} ./trees_${line}.tre
+	Rscript ${scripts_dir}/trimTrees.R ${aligned_loci_path}/${line} ${trees_to_eval} ./trees_${line}.tre
 	
 	sed -n 1p ./trees_${line}.tre > ./tree1_${line}.tre # select constraint tree from tree file
 	${iqtree_exe} -nt 1 -t ./tree1_${line}.tre -s ${aligned_loci_path}/${line} --scf 500 --prefix concord1_${line}
