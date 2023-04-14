@@ -1,6 +1,6 @@
 # Mammal Consensus Nodes
-Scripts associated with the [Placental Mammal Polytomy Project](https://github.com/LMBiancani/PlacentalPolytomy).
-Adapted from [TreeshrewProject](https://github.com/AlexKnyshov/TreeshrewProject).
+Scripts associated with the [Mammal Consensus Node Project](https://github.com/zackbergeron/MammalConsensusNodes).
+Adapted from [TreeshrewProject](https://github.com/AlexKnyshov/TreeshrewProject) and [PlacentalPolytomyProject](https://github.com/LMBiancani/PlacentalPolytomy).
 
 
 
