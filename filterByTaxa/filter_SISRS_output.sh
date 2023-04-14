@@ -17,4 +17,4 @@ module load Biopython/1.78-foss-2020b
 mkdir /data/schwartzlab/zbergeron/SISRS_mammals/filteredMammalLoci
 python /data/schwartzlab/zbergeron/TreeshrewProject/filterByTaxa/filter_SISRS_output.py /data/schwartzlab/zbergeron/SISRS_mammals/Mammal_filterbytaxa_table.csv /data/schwartzlab/zbergeron/SISRS_mammals/SISRS_Run/aligned_contigs /data/schwartzlab/zbergeron/SISRS_mammals/filteredMammalLoci 0.33 18 4
 
-
+date
