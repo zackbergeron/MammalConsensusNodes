@@ -3,31 +3,22 @@
 #SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks-per-node=36   # processor core(s) per node
-#SBATCH --mail-user="biancani@uri.edu"
-#SBATCH --mail-type=ALL
+#SBATCH --mail-user="zbergeron@uri.edu"
+#SBATCH --mail-type=END,FAIL
 
-# UPDATE:
-# path to AMAS program (AMAS.py):
-AMAS=/data/schwartzlab/Biancani/AMAS/amas/AMAS.py
-# number of tasks/cores per node:
-CORES=36
-# location of amas scripts:
-SCRIPTS=/data/schwartzlab/Biancani/PlacentalPolytomy/amas
-# path to FILTERED SISRS loci (aligned contigs) folder:
-LOCI=/data/schwartzlab/Biancani/PlacentalPolytomy/output/SISRS_out_filtered
-# path to output folder for amas (will be created by script if necessary):
-OUTPUT=/data/schwartzlab/Biancani/PlacentalPolytomy/output/amas
-
-#Andromeda (URI's cluster) specific
 module purge
 module load Python/3.7.4-GCCcore-8.3.0
-#
+path_to_run_amas_py="/data/schwartzlab/zbergeron/TreeshrewProject/amas/run_amas.py"
+path_to_amas="/data/schwartzlab/Biancani/AMAS/amas/AMAS.py"
+folder_with_loci="/data/schwartzlab/zbergeron/SISRS_mammals/filteredMammalLoci"
+cores_to_use=36
 
-mkdir -p ${OUTPUT}/amas_assessments
-cd ${OUTPUT}
+cd $SLURM_SUBMIT_DIR
 date
 
-python ${SCRIPTS}/run_amas.py ${LOCI} ${CORES} ${AMAS}
+mkdir amas_assessments
+
+python ${path_to_run_amas_py} ${folder_with_loci} ${cores_to_use} ${path_to_amas}
 
 mv amas_total_results.txt amas_assessments/
 rm amas_output_temp.txt
