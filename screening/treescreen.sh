@@ -3,13 +3,15 @@
 #SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH --mail-user="zbergeron@uri.edu"
+#SBATCH --mail-type=ALL
 #SBATCH -c 1
 #SBATCH --mem-per-cpu=6G
 
-concattree_path="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing_v2/sptrees.tre"
-genetree_path="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing_v2/gtrees.tre"
-genetree_names="/home/aknyshov/alex_data/tree_shew_analysis/SISRS/post_processing_v2/gtrees.txt"
-script_path="/home/aknyshov/alex_data/tree_shew_analysis/TreeshrewProject/screening/treescreen.R"
+concattree_path="/data/schwartzlab/zbergeron/TreeshrewProject/iqtree/sptrees.tre"
+genetree_path="/data/schwartzlab/zbergeron/TreeshrewProject/iqtree/gtrees.tre"
+genetree_names="/data/schwartzlab/zbergeron/TreeshrewProject/iqtree/gtrees.txt"
+script_path="/data/schwartzlab/zbergeron/TreeshrewProject/screening/treescreen.R"
 
 cd $SLURM_SUBMIT_DIR
 
