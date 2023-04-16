@@ -13,9 +13,9 @@ taxapresent <- rownames(alignment)
 outtrees <- list()
 i <- 1
 for (t in trees){
-	treetips <- t$tip.label
-	tipstoremove <- treetips[!(treetips %in% taxapresent)]
-	outtrees[[i]] <- drop.tip(t, tipstoremove)
+        treetips <- t$tip.label
+        tipstoremove <- treetips[!(treetips %in% taxapresent)]
+        outtrees[[i]] <- drop.tip(t, tipstoremove)
     i <- i + 1
 }
 class(outtrees) <- "multiPhylo"
