@@ -17,10 +17,12 @@ library(scaleboot)
   #'A' = Monophyletic Afrotheria constraint tree/Comparison w/ Star
   #'B' = Monophyletic Boreoeutheria constraint tree/Comparison w/ Star
   #'X' = Monophyletic Xenarthra constraint tree/Comparison w/ Star
-  
+###Individual fit data prep; Monophyletic clade constraints
+
 ###Individual fit data prep; Monophyletic clade constraints
 
 dLnLtabPRIi <- read.csv("combined_iqtree_mammals_dLnLs.csv", header = F, stringsAsFactors = F)
+
 #deleted last 9 LnL values as they were repeats from previous check runs; 405,629 to 405,620
 
 dLnLtabPRIi <- dLnLtabPRIi[1:405620,]
@@ -29,7 +31,7 @@ dLnLtabPRIi$Tree <- rep(1:4,101405)
 #had to go wide-format b/c original csv had long-format
 dLnLtabPRIi_wide <- pivot_wider(dLnLtabPRIi, names_from = Tree, values_from = V2)
 
-#didn't screen like Alex; skipped
+#didn't screen by branch length like Alex; skipped
 
 #AU test to assess signficance of LnL difference across whole dataset for any one comparison 
 
@@ -175,19 +177,16 @@ AUtestPRIiOUTXpval
 
 #separate loci by the topology they favor (have the highest signal for)
 
-#add wiggle room to difference in constraint & star LnL (e.g. >=110%)
-
 #this is just creating the function for the next chunk
 get_favoring_lnl_loci <- function(inputdf, signal="dLnL", m){
+  
   inputdf <- select(inputdf, locname, m, Star)
-  inputdfb <- apply(inputdf[,2:3], 1, function(x) which(x == max(x)))
-  inputdfa <- apply(inputdf[,2:3], 1, function(x) x[which(x == max(x))])
-  returndf <- as.data.frame(inputdf$locname[lapply(inputdfa, length) == 1])
-  returndf$topology <- as.numeric(unlist(inputdfb[lapply(inputdfb, length) == 1]))
-  returndf$dLnL <- as.numeric(unlist(inputdfa[lapply(inputdfa, length) == 1]))
-  colnames(returndf) <- c("locname","topology",signal)
-  returndf$topology <- factor(returndf$topology, labels = colnames(inputdf)[2:3])
-  return(returndf)
+  #using absolute value b/c concat has negative LnLs, individual has positive
+  #then, adding an offset. So, if absolute value of constraint is greater than Star (i.e. worse than Star), still select constraint if it's <=5% greater (i.e. within 5% greater than Star's LnL)
+  inputdf2 <- inputdf %>% mutate(topology = if_else(abs(Star) < abs(get(m))*0.95, "Star", m),
+                                 best_dLnL = if_else(abs(Star) < abs(get(m))*0.95, Star, get(m))) %>%  #dLnL column is named manually not as signal variable
+    select(Star, get(m))                  
+  return(inputdf2)
 }
  
 #get groups of loci for each topo (For MonoA v. Star comparison); can't compare across hypotheses, rather only on this binary comparison
@@ -320,6 +319,8 @@ lnLsignal_PRIiNONOUTX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTX, "dL
 #Concat data prep
 
 dLnLtabPRIc <- read.csv("combined_iqtree_dLnLs_concat.csv", header = F, stringsAsFactors = F)
+
+#pull distinct loci b/c each was repeated ~16 times for some reason
 dLnLtabPRIc <- distinct(dLnLtabPRIc)
 dLnLtabPRIc$V1 <- paste0(dLnLtabPRIc$V1, ".fasta")
 
@@ -627,7 +628,7 @@ dLnL_VS_sCFtabPRIcX <- merge(dLnLtabPRIcrFX, scf_tabPRIX, by="locname")
 
 #Individual fit
 
-#Afrotheria
+#Afrotheria; pulls loci with particular topology
 LnLMonoA_Only <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='MonoA', -3]
 LnLStar_A <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='Star', -3]
 
@@ -659,7 +660,7 @@ LnLStar_Ac <- dLnLtabPRIcrFA[dLnLtabPRIcrFA$topology=='Star', -3]
 
 MonoAc_Count <- nrow(LnLMonoAc_Only)
 StarAc_Count <- nrow(LnLStar_Ac)
-MonoAc_Comp_LnL_Barplot <- barplot(c(MonoAc_Count,StarAc_Count),names.arg=c('Monophyletic','Star'),main='Concat. Fit LnL - Afrotheria Comparison',ylab='Loci Count',ylim=c(0,5e+5))
+MonoAc_Comp_LnL_Barplot <- barplot(c(MonoAc_Count,StarAc_Count),names.arg=c('Monophyletic','Star'),main='Concat. Fit LnL - Afrotheria Comparison',ylab='Loci Count',ylim=c(0,60000))
 
 #Boreoeutheria
 LnLMonoBc_Only <- dLnLtabPRIcrFB[dLnLtabPRIcrFB$topology=='MonoB', -3]
@@ -667,7 +668,7 @@ LnLStar_Bc <- dLnLtabPRIcrFB[dLnLtabPRIcrFB$topology=='Star', -3]
 
 MonoBc_Count <- nrow(LnLMonoBc_Only)
 StarBc_Count <- nrow(LnLStar_Bc)
-MonoBc_Comp_LnL_Barplot <- barplot(c(MonoBc_Count,StarBc_Count),names.arg=c('Monophyletic','Star'),main='Concat. Fit LnL - Boreoeutheria Comparison',ylab='Loci Count',ylim=c(0,5e+5))
+MonoBc_Comp_LnL_Barplot <- barplot(c(MonoBc_Count,StarBc_Count),names.arg=c('Monophyletic','Star'),main='Concat. Fit LnL - Boreoeutheria Comparison',ylab='Loci Count',ylim=c(0,60000))
 
 #Xenarthra
 LnLMonoXc_Only <- dLnLtabPRIcrFX[dLnLtabPRIcrFX$topology=='MonoX', -3]
@@ -675,148 +676,304 @@ LnLStar_Xc <- dLnLtabPRIcrFX[dLnLtabPRIcrFX$topology=='Star', -3]
 
 MonoXc_Count <- nrow(LnLMonoXc_Only)
 StarXc_Count <- nrow(LnLStar_Xc)
-MonoXc_Comp_LnL_Barplot <- barplot(c(MonoXc_Count,StarXc_Count),names.arg=c('Monophyletic','Star'),main='Concat. Fit LnL - Xenarthra Comparison',ylab='Loci Count',ylim=c(0,5e+5))
+MonoXc_Comp_LnL_Barplot <- barplot(c(MonoXc_Count,StarXc_Count),names.arg=c('Monophyletic','Star'),main='Concat. Fit LnL - Xenarthra Comparison',ylab='Loci Count',ylim=c(0,60000))
 
 ###Barplots for sCFs - Within Comparisons
 
-###Barplot for LnL - Across Comparisons
+#Afrotheria
+SCF_MonoA <- scf_tabPRIA[scf_tabPRIA$MonoA>=50, ]
+SCF_Fail_A <- scf_tabPRIA[scf_tabPRIA$MonoA<50, ]
+
+SCF_MonoA_Count <- nrow(SCF_MonoA)
+SCF_Fail_A_Count <- nrow(SCF_Fail_A)
+MonoA_SCFs_Barplot <- barplot(c(SCF_MonoA_Count,SCF_Fail_A_Count),names.arg=c('Supports Constraint','Below Threshold'),main='SCF Support - Afrotheria Comparison',ylab='Loci Count',ylim=c(0,80000))
+
+#Boreoeutheria
+SCF_MonoB <- scf_tabPRIB[scf_tabPRIB$MonoB>=50, ]
+SCF_Fail_B <- scf_tabPRIB[scf_tabPRIB$MonoB<50, ]
+
+SCF_MonoB_Count <- nrow(SCF_MonoB)
+SCF_Fail_B_Count <- nrow(SCF_Fail_B)
+MonoB_SCFs_Barplot <- barplot(c(SCF_MonoB_Count,SCF_Fail_B_Count),names.arg=c('Supports Constraint','Below Threshold'),main='SCF Support - Boreoeutheria Comparison',ylab='Loci Count',ylim=c(0,90000))
+
+#Xenarthra
+SCF_MonoX <- scf_tabPRIX[scf_tabPRIX$MonoX>=50, ]
+SCF_Fail_X <- scf_tabPRIX[scf_tabPRIX$MonoX<50, ]
+
+SCF_MonoX_Count <- nrow(SCF_MonoX)
+SCF_Fail_X_Count <- nrow(SCF_Fail_X)
+MonoX_SCFs_Barplot <- barplot(c(SCF_MonoX_Count,SCF_Fail_X_Count),names.arg=c('Supports Constraint','Below Threshold'),main='SCF Support - Xenarthra Comparison',ylab='Loci Count',ylim=c(0,70000))
+
+
+
+###Barplots for LnL - Across Comparisons
 
 #Individual fit
+mutate(dLnLtabPRIirFA, MonoA = if_else(topology=="MonoA", 1, 0)) %>%
+select(-best_dLnL, -topology) %>%
+  left_join(select(mutate(dLnLtabPRIirFB, MonoB = if_else(topology=="MonoB", 1, 0)),-best_dLnL, -topology)) %>%
+  left_join(select(mutate(dLnLtabPRIirFX, MonoX = if_else(topology=="MonoX", 1, 0)),-best_dLnL, -topology)) %>%
+  mutate(total = MonoA + MonoB + MonoX) -> constraint_counts
 
-#Loci w/ favored topology being respective constraint; also remove dLnL column
+filter(constraint_counts, total ==1)
 
-LnLMonoA_Only <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='MonoA', -3]
+constraint_counts %>%
+  group_by(total) %>% summarize(n = n()) -> num_constraints_favored
 
-LnLMonoB_Only <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='MonoB', -3]
+#goes wide to make creating barplot easier
+Constraint_Counts_Across <- pivot_wider(num_constraints_favored, names_from = total, values_from = n)
 
-LnLMonoX_Only <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='MonoX', -3]
+#then just re-ordering for 3 to 0, rather than 0 to 3; just an aesthetic thing
+Constraint_Counts_Across <- Constraint_Counts_Across[, c(4,3,2,1,0)]
 
-#Loci w/ LnL that favor all 3 constraints compared to star
+IndFitBarPlot_LnLs_Across <- barplot(Constraint_Counts_Across, names.arg=c(3,2,1,0),main='Ind. Fit LnL Support Across Comparisons',ylab='Loci Count',xlab="Monophyletic Constraints Favored",ylim=c(0,60000))
 
-LnLConstraintAB <- merge(LnLMonoA_Only, LnLMonoB_Only, by="locname")
-#can only merge two data frames at once
-LnLConstraintsFavored <- merge(LnLConstraintAB, LnLMonoX_Only, by="locname")
-Constraints_Count <- nrow(LnLConstraintsFavored)
 
-#Loci w/ LnL that have a mix of favored topologies across comparisons (e.g. MonoA, MonoB, Star; or Star, Star, MonoX)
-#MonoA, MonoB, Star
-
-LnLMonoA_Only <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='MonoA', -3]
-
-LnLMonoB_Only <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='MonoB', -3]
-
-LnLStar_X <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='Star', -3]
-
-LnLConstraintAB <- merge(LnLMonoA_Only, LnLMonoB_Only, by="locname")
-LnL_A_B_Star <- merge(LnLConstraintAB, LnLStar_X, by="locname")
-A_B_Star_Count <- nrow(LnL_A_B_Star)
-
-#MonoA, Star, MonoX
-
-LnLMonoA_Only <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='MonoA', -3]
-
-LnLStar_B <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='Star', -3]
-
-LnLMonoX_Only <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='MonoX', -3]
-
-LnLConstraintAX <- merge(LnLMonoA_Only, LnLMonoX_Only, by="locname")
-LnL_A_Star_X <-  merge(LnLConstraintAX, LnLStar_B, by="locname")
-A_Star_X_Count <- nrow(LnL_A_Star_X)
-
-#Star, MonoB, MonoX
-
-LnLStar_A <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='Star', -3]
-
-LnLMonoB_Only <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='MonoB', -3]
-
-LnLMonoX_Only <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='MonoX', -3]
-
-LnLConstraintBX <- merge(LnLMonoB_Only, LnLMonoX_Only, by="locname")
-LnL_Star_B_X <- merge(LnLConstraintBX, LnLStar_A, by="locname")
-Star_B_X_Count <- nrow(LnL_Star_B_X)
-
-#Count of 2 Monos, 1 Star - Total
-Mono2_Star1_Count <- sum(A_B_Star_Count+A_Star_X_Count+Star_B_X_Count)
-
-#MonoA, Star, Star
-
-LnLMonoA_Only <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='MonoA', -3]
-
-LnLStar_B <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='Star', -3]
-
-LnLStar_X <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='Star', -3]
-
-LnLStarBX <- merge(LnLStar_B, LnLStar_X, by="locname")
-LnL_A_Star_Star <- merge(LnLStarBX, LnLMonoA_Only, by="locname")
-A_Star_Star_Count <- nrow(LnL_A_Star_Star)
-
-#Star, MonoB, Star
-
-LnLStar_A <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='Star', -3]
-
-LnLMonoB_Only <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='MonoB', -3]
-
-LnLStar_X <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='Star', -3]
-
-LnLStarAX <- merge(LnLStar_A, LnLStar_X, by="locname")
-LnL_Star_B_Star <- merge(LnLStarAX, LnLMonoB_Only, by="locname")
-Star_B_Star_Count <- nrow(LnL_Star_B_Star)
-
-#Star, Star, MonoX
-
-LnLStar_A <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='Star', -3]
-
-LnLStar_B <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='Star', -3]
-
-LnLMonoX_Only <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='MonoX', -3]
-
-LnLStarAB <- merge(LnLStar_A, LnLStar_B, by="locname")
-LnL_Star_Star_X <- merge(LnLStarAX, LnLMonoX_Only, by="locname")
-Star_Star_X_Count <- nrow(LnL_Star_Star_X)
-
-#Count of 1 Mono, 2 Stars - Total
-Mono1_Star2_Count <- sum(A_Star_Star_Count+Star_B_Star_Count+Star_Star_X_Count)
-
-#Loci w/ LnL that favor Star in all 3 comparisons compared to constraints
-
-LnLStar_A <- dLnLtabPRIirFA[dLnLtabPRIirFA$topology=='Star', -3]
-
-LnLStar_B <- dLnLtabPRIirFB[dLnLtabPRIirFB$topology=='Star', -3]
-
-LnLStar_X <- dLnLtabPRIirFX[dLnLtabPRIirFX$topology=='Star', -3]
-
-LnLStarAB <- merge(LnLStar_A, LnLStar_B, by="locname")
-LnLStarsFavored<- merge(LnLStarAB, LnLStar_X, by="locname")
-Stars_Count <- nrow(LnLStarsFavored)
-
-#Vector of category counts & names
-Category_Counts <- c(Constraints_Count, Mono2_Star1_Count, Mono1_Star2_Count, Stars_Count)
-Category_Names <- c(3, 2, 1, 0)
-
-IndividualFitBarPlot_LnLs <- barplot(Category_Counts, names.arg=Category_Names, main='Individual Fit LnL-Favored Topologies', ylim=c(0,65000), xlab='Monophyletic Constraints Favored', ylab='Loci Count')
-
+                                     
 #Concatenated fit
+mutate(dLnLtabPRIcrFA, MonoA = if_else(topology=="MonoA", 1, 0)) %>%
+  select(-best_dLnL, -topology) %>%
+  left_join(select(mutate(dLnLtabPRIcrFB, MonoB = if_else(topology=="MonoB", 1, 0)),-best_dLnL, -topology)) %>%
+  left_join(select(mutate(dLnLtabPRIcrFX, MonoX = if_else(topology=="MonoX", 1, 0)),-best_dLnL, -topology)) %>%
+  mutate(total = MonoA + MonoB + MonoX) -> constraint_counts_con
 
-#Loci w/ LnL that favor all 3 constraints compared to star
+filter(constraint_counts, total ==1)
 
-#Loci w/ LnL that have a mix of favored topologies across comparisons (e.g. MonoA, MonoB, Star; or Star, Star, MonoX)
+constraint_counts_con %>%
+  group_by(total) %>% summarize(n = n()) -> num_constraints_favored_con
 
-#Loci w/ LnL that favor Star in all 3 comparisons compared to constraints
 
+#goes wide to make creating barplot easier
+Constraint_Counts_Con_Across <- pivot_wider(num_constraints_favored_con, names_from = total, values_from = n)
+
+#then just re-ordering for 3 to 0, rather than 0 to 3; just an aesthetic thing
+Constraint_Counts_Con_Across <- Constraint_Counts_Across[, c(4,3,2,1,0)]
+
+ConFitBarPlot_LnLs_Across <- barplot(Constraint_Counts_Con_Across, names.arg=c(3,2,1,0),main='Concat. Fit LnL Support Across Comparisons',ylab='Loci Count',xlab="Monophyletic Constraints Favored",ylim=c(0,60000))
+                                     
 
 
 ###Barplot for sCFs - Across Comparisons
 
 #Loci w/ sCF >50 across all 3 comparisons
 
-SCF_MonoA <- scf_tabPRIA[scf_tabPRIA$MonoA>50, ]
-SCF_MonoB <- scf_tabPRIB[scf_tabPRIB$MonoB>50, ]
-SCF_MonoX <- scf_tabPRIX[scf_tabPRIX$MonoX>50, ]
+SCF_ConstraintA <- scf_tabPRI[scf_tabPRI$MonoA>=50, ]
+SCF_ConstraintAB <- SCF_ConstraintA[SCF_ConstraintA$MonoB>=50, ]
+SCF_ConstraintABX <- SCF_ConstraintAB[SCF_ConstraintAB$MonoX>=50, ]
+SCF_ConstraintABX <- na.omit(SCF_ConstraintABX)
+SCF_ConstraintABX_Count <- nrow(SCF_ConstraintABX)
 
+#Loci w/ SCF support for exactly 2 constraint
 
+#MonoA & MonoB
+SCF_ConstraintA <- scf_tabPRI[scf_tabPRI$MonoA>=50, ]
+SCF_ConstraintAB <- SCF_ConstraintA[SCF_ConstraintA$MonoB>=50, ]
+SCF_ConstraintAB_Fail_X <- SCF_ConstraintAB[SCF_ConstraintAB$Mono<50, ]
 
+#MonoA & MonoX
+SCF_ConstraintA <- scf_tabPRI[scf_tabPRI$MonoA>=50, ]
+SCF_ConstraintAX <- SCF_ConstraintA[SCF_ConstraintA$MonoX>=50, ]
+SCF_ConstraintAX_Fail_B <- SCF_ConstraintAX[SCF_ConstraintAX$MonoB<50, ]
 
-#Loci w/ mix of sCF values (e.g. MonoA sCF=56, MonoB=34, MonoX=67)
+#MonoB & MonoX
+SCF_ConstraintB <- scf_tabPRI[scf_tabPRI$MonoB>=50, ]
+SCF_ConstraintBX <- SCF_ConstraintB[SCF_ConstraintB$MonoX>=50, ]
+SCF_ConstraintBX_Fail_A <- SCF_ConstraintBX[SCF_ConstraintBX$MonoA<50, ]
+
+Constraint_2_SCF_Support_Count <- nrow(SCF_ConstraintAB_Fail_X)+nrow(SCF_ConstraintAX_Fail_B)+nrow(SCF_ConstraintBX_Fail_A)
+
+#Loci w/ SCF support for exactly 1 constraint
+
+#MonoA
+SCF_ConstraintA <- scf_tabPRI[scf_tabPRI$MonoA>=50, ]
+SCF_ConstraintA_Fail_B <- SCF_ConstraintA[SCF_ConstraintA$MonoB<50, ]
+SCF_ConstraintA_Fail_BX <- SCF_ConstraintA_Fail_B[SCF_ConstraintA_Fail_B$MonoX<50, ]
+
+#MonoB
+SCF_ConstraintB <- scf_tabPRI[scf_tabPRI$MonoB>=50, ]
+SCF_ConstraintB_Fail_A <- SCF_ConstraintB[SCF_ConstraintB$MonoA<50, ]
+SCF_ConstraintB_Fail_AX <- SCF_ConstraintB_Fail_A[SCF_ConstraintB_Fail_A$MonoX<50, ]
+
+#MonoX
+SCF_ConstraintX <- scf_tabPRI[scf_tabPRI$MonoX>=50, ]
+SCF_ConstraintX_Fail_A <- SCF_ConstraintX[SCF_ConstraintX$MonoA<50, ]
+SCF_ConstraintA_Fail_AB <- SCF_ConstraintX_Fail_A[SCF_ConstraintX_Fail_A$MonoB<50, ]
+
+Constraint_1_SCF_Support_Count <- nrow(SCF_ConstraintA_Fail_BX)+nrow(SCF_ConstraintB_Fail_AX)+nrow(SCF_ConstraintA_Fail_AB)
 
 #Loci w/ sCF <50  across all 3 comparisons
 
+SCF_Fail_A <- scf_tabPRI[scf_tabPRI$MonoA<50, ]
+SCF_Fail_AB <- SCF_Fail_A[SCF_Fail_A$MonoB<50, ]
+SCF_Fail_ABX <- SCF_Fail_AB[SCF_Fail_AB$MonoX<50, ]
+SCF_Fail_ABX <- na.omit(SCF_Fail_ABX)
+SCF_Fail_ABX_Count <- nrow(SCF_Fail_ABX)
+
+SCFs_Across <- barplot(c(SCF_ConstraintABX_Count,Constraint_2_SCF_Support_Count,Constraint_1_SCF_Support_Count,SCF_Fail_ABX_Count),names.arg=c(3,2,1,0),ylab='Loci Count',main='SCF-Favored Constraints',ylim=c(0,50000))
+
+
+
+###Barplots for topology-congruence across metrics (LnL & SCF)
+
+#Individual fit
+
+#Afrotheria
+
+#Both favor constraint
+LnL_MonoA <- dLnL_VS_sCFtabPRIiA[dLnL_VS_sCFtabPRIiA$topology=='MonoA', ]
+Both_MonoA <- LnL_MonoA[LnL_MonoA$MonoA>=50, -3]
+Both_MonoA_Count <- nrow(Both_MonoA)
+
+#LnL favors constraint, SCF doesnt
+LnL_MonoA <- dLnL_VS_sCFtabPRIiA[dLnL_VS_sCFtabPRIiA$topology=='MonoA', ]
+OnlyLnL_MonoA <- LnL_MonoA[LnL_MonoA$MonoA<=50, -3]
+OnlyLnL_MonoA_Count <- nrow(OnlyLnL_MonoA)
+
+#SCF favors constraint, LnL doesn't
+LnL_StarA <- dLnL_VS_sCFtabPRIiA[dLnL_VS_sCFtabPRIiA$topology=='Star', ]
+Only_SCF_MonoA <- LnL_StarA[LnL_StarA$MonoA>=50, -3]
+Only_SCF_MonoA_Count <- nrow(Only_SCF_MonoA)
+
+#Neither favor constraint
+LnL_StarA <- dLnL_VS_sCFtabPRIiA[dLnL_VS_sCFtabPRIiA$topology=='Star', ]
+Neither_MonoA <- LnL_StarA[LnL_StarA$MonoA<=50, -3]
+Neither_MonoA_Count <- nrow(Neither_MonoA) 
+
+Afrotheria_Metric_Congruence <- barplot(c(Both_MonoA_Count,OnlyLnL_MonoA_Count,Only_SCF_MonoA_Count,Neither_MonoA_Count),names.arg=c('LnL & SCF','LnL Only','sCF Only','Neither'),main='Congruence of Metrics for Constraint Favored - Afrotheria',ylab='Loci Count')
+
+#Boreoeutheria
+
+#Both favor constraint
+LnL_MonoB <- dLnL_VS_sCFtabPRIiB[dLnL_VS_sCFtabPRIiB$topology=='MonoB', ]
+Both_MonoB <- LnL_MonoB[LnL_MonoB$MonoB>=50, -3]
+Both_MonoB_Count <- nrow(Both_MonoB)
+
+#LnL favors constraint, SCF doesnt
+LnL_MonoB <- dLnL_VS_sCFtabPRIiBdLnL_VS_sCFtabPRIiB$topology=='MonoB', ]
+OnlyLnL_MonoB <- LnL_MonoB[LnL_MonoB$MonoB<=50, -3]
+OnlyLnL_MonoB_Count <- nrow(OnlyLnL_MonoB)
+
+#SCF favors constraint, LnL doesn't
+LnL_StarB <- dLnL_VS_sCFtabPRIiB[dLnL_VS_sCFtabPRIiB$topology=='Star', ]
+Only_SCF_MonoB <- LnL_StarB[LnL_StarB$MonoB>=50, -3]
+Only_SCF_MonoB_Count <- nrow(Only_SCF_MonoB)
+
+#Neither favor constraint
+LnL_StarB <- dLnL_VS_sCFtabPRIiB[dLnL_VS_sCFtabPRIiB$topology=='Star', ]
+Neither_MonoB <- LnL_StarB[LnL_StarB$MonoB<=50, -3]
+Neither_MonoB_Count <- nrow(Neither_MonoB) 
+
+Boreoeutheria_Metric_Congruence <- barplot(c(Both_MonoB_Count,OnlyLnL_MonoB_Count,Only_SCF_MonoB_Count,Neither_MonoB_Count),names.arg=c('LnL & SCF','LnL Only','sCF Only','Neither'),main='Congruence of Metrics for Constraint Favored - Boreoeutheria',ylab='Loci Count')
+
+#Xenarthra
+
+#Both favor constraint
+LnL_MonoX <- dLnL_VS_sCFtabPRIiX[dLnL_VS_sCFtabPRIiX$topology=='MonoX', ]
+Both_MonoX <- LnL_MonoX[LnL_MonoX$MonoX>=50, -3]
+Both_MonoX_Count <- nrow(Both_MonoX)
+
+#LnL favors constraint, SCF doesnt
+LnL_MonoX <- dLnL_VS_sCFtabPRIiXdLnL_VS_sCFtabPRIiX$topology=='MonoX', ]
+OnlyLnL_MonoX <- LnL_MonoX[LnL_MonoX$MonoX<=50, -3]
+OnlyLnL_MonoX_Count <- nrow(OnlyLnL_MonoX)
+
+#SCF favors constraint, LnL doesn't
+LnL_StarX <- dLnL_VS_sCFtabPRIiX[dLnL_VS_sCFtabPRIiX$topology=='Star', ]
+Only_SCF_MonoX <- LnL_StarX[LnL_StarX$MonoX>=50, -3]
+Only_SCF_MonoX_Count <- nrow(Only_SCF_MonoX)
+
+#Neither favor constraint
+LnL_StarX <- dLnL_VS_sCFtabPRIiX[dLnL_VS_sCFtabPRIiX$topology=='Star', ]
+Neither_MonoX <- LnL_StarX[LnL_StarX$MonoX<=50, -3]
+Neither_MonoX_Count <- nrow(Neither_MonoX) 
+
+Xenarthra_Metric_Congruence <- barplot(c(Both_MonoX_Count,OnlyLnL_MonoX_Count,Only_SCF_MonoX_Count,Neither_MonoX_Count),names.arg=c('LnL & SCF','LnL Only','sCF Only','Neither'),main='Congruence of Metrics for Constraint Favored - Xenarthra',ylab='Loci Count',ylim=c(0,60000))
+
+
+#Concatenated fit
+
+#Afrotheria
+
+#Both favor constraint
+LnL_MonoAc <- dLnL_VS_sCFtabPRIcA[dLnL_VS_sCFtabPRIcA$topology=='MonoA', ]
+Both_MonoAc <- LnL_MonoAc[LnL_MonoAc$MonoA>=50, -3]
+Both_MonoAc_Count <- nrow(Both_MonoAc)
+
+#LnL favors constraint, SCF doesnt
+LnL_MonoAc <- dLnL_VS_sCFtabPRIcA[dLnL_VS_sCFtabPRIcA$topology=='MonoA', ]
+OnlyLnL_MonoAc <- LnL_MonoAc[LnL_MonoAc$MonoA<=50, -3]
+OnlyLnL_MonoAc_Count <- nrow(OnlyLnL_MonoAc)
+
+#SCF favors constraint, LnL doesn't
+LnL_StarAc <- dLnL_VS_sCFtabPRIcA[dLnL_VS_sCFtabPRIcA$topology=='Star', ]
+Only_SCF_MonoAc <- LnL_StarAc[LnL_StarAc$MonoA>=50, -3]
+Only_SCF_MonoAc_Count <- nrow(Only_SCF_MonoAc)
+
+#Neither favor constraint
+LnL_StarAc <- dLnL_VS_sCFtabPRIcA[dLnL_VS_sCFtabPRIcA$topology=='Star', ]
+Neither_MonoAc <- LnL_StarAc[LnL_StarAc$MonoA<=50, -3]
+Neither_MonoAc_Count <- nrow(Neither_MonoAc) 
+
+Afrotheria_Con_Metric_Congruence <- barplot(c(Both_MonoAc_Count,OnlyLnL_MonoAc_Count,Only_SCF_MonoAc_Count,Neither_MonoAc_Count),names.arg=c('LnL & SCF','LnL Only','sCF Only','Neither'),main='Congruence of Metrics for Constraint Favored - Afrotheria (Concat)',ylab='Loci Count',ylim=c(0,50000))
+
+
+#Boreoeutheria
+
+#Both favor constraint
+LnL_MonoBc <- dLnL_VS_sCFtabPRIcB[dLnL_VS_sCFtabPRIcB$topology=='MonoB', ]
+Both_MonoBc <- LnL_MonoBc[LnL_MonoBc$MonoB>=50, -3]
+Both_MonoBc_Count <- nrow(Both_MonoBc)
+
+#LnL favors constraint, SCF doesnt
+LnL_MonoBc <- dLnL_VS_sCFtabPRIcB[dLnL_VS_sCFtabPRIcB$topology=='MonoB', ]
+OnlyLnL_MonoBc <- LnL_MonoBc[LnL_MonoBc$MonoB<=50, -3]
+OnlyLnL_MonoBc_Count <- nrow(OnlyLnL_MonoBc)
+
+#SCF favors constraint, LnL doesn't
+LnL_StarBc <- dLnL_VS_sCFtabPRIcB[dLnL_VS_sCFtabPRIcB$topology=='Star', ]
+Only_SCF_MonoBc <- LnL_StarBc[LnL_StarBc$MonoB>=50, -3]
+Only_SCF_MonoBc_Count <- nrow(Only_SCF_MonoBc)
+
+#Neither favor constraint
+LnL_StarBc <- dLnL_VS_sCFtabPRIcB[dLnL_VS_sCFtabPRIcB$topology=='Star', ]
+Neither_MonoBc <- LnL_StarBc[LnL_StarBc$MonoB<=50, -3]
+Neither_MonoBc_Count <- nrow(Neither_MonoBc) 
+
+Boreoeutheria_Con_Metric_Congruence <- barplot(c(Both_MonoBc_Count,OnlyLnL_MonoBc_Count,Only_SCF_MonoBc_Count,Neither_MonoBc_Count),names.arg=c('LnL & SCF','LnL Only','sCF Only','Neither'),main='Congruence of Metrics for Constraint Favored - Boreoeutheria (Concat)',ylab='Loci Count')
+
+
+#Xenarthra
+
+#Both favor constraint
+LnL_MonoXc <- dLnL_VS_sCFtabPRIcX[dLnL_VS_sCFtabPRIcX$topology=='MonoX', ]
+Both_MonoXc <- LnL_MonoXc[LnL_MonoXc$MonoX>=50, -3]
+Both_MonoXc_Count <- nrow(Both_MonoXc)
+
+#LnL favors constraint, SCF doesnt
+LnL_MonoXc <- dLnL_VS_sCFtabPRIcX[dLnL_VS_sCFtabPRIcX$topology=='MonoX', ]
+OnlyLnL_MonoXc <- LnL_MonoXc[LnL_MonoXc$MonoX<=50, -3]
+OnlyLnL_MonoXc_Count <- nrow(OnlyLnL_MonoXc)
+
+#SCF favors constraint, LnL doesn't
+LnL_StarXc <- dLnL_VS_sCFtabPRIcX[dLnL_VS_sCFtabPRIcX$topology=='Star', ]
+Only_SCF_MonoXc <- LnL_StarXc[LnL_StarXc$MonoX>=50, -3]
+Only_SCF_MonoXc_Count <- nrow(Only_SCF_MonoXc)
+
+#Neither favor constraint
+LnL_StarXc <- dLnL_VS_sCFtabPRIcX[dLnL_VS_sCFtabPRIcX$topology=='Star', ]
+Neither_MonoXc <- LnL_StarXc[LnL_StarXc$MonoX<=50, -3]
+Neither_MonoXc_Count <- nrow(Neither_MonoXc) 
+
+Xenarthra_Con_Metric_Congruence <- barplot(c(Both_MonoXc_Count,OnlyLnL_MonoXc_Count,Only_SCF_MonoXc_Count,Neither_MonoXc_Count),names.arg=c('LnL & SCF','LnL Only','sCF Only','Neither'),main='Congruence of Metrics for Constraint Favored - Xenarthra (Concat)',ylab='Loci Count',ylim=c(0,50000))
+
+
+
+###Congruence of metrics across comparisons (i.e. dual support of monophyly in across 3 comparisons)
+
+#Individual fit
+
+Across_Dual_Support <- barplot(c(Both_MonoA_Count,Both_MonoB_Count,Both_MonoX_Count),names.arg=c('MonoA','MonoB','MonoX'),ylab='Loci Count',main='Dual Support for Monophyly Across Comparisons')
+
+#Concatenated fit
+
+Across_Dual_Support_Con <- barplot(c(Both_MonoAc_Count,Both_MonoBc_Count,Both_MonoXc_Count),names.arg=c('MonoA','MonoB','MonoX'),ylab='Loci Count',main='Dual Support for Monophyly Across Comparisons (Concat)')
