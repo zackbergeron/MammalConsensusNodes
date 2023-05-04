@@ -733,10 +733,8 @@ constraint_counts %>%
 #creating vector of counts
 Constraint_Counts_Across <- num_constraints_favored$n
 
-ggplot(num_constraints_favored, aes(total,n)) + geom_point()
-
 #then just re-ordering for 3 to 0, rather than 0 to 3; just an aesthetic thing
-Constraint_Counts_Across <- sort(Constraint_Counts_Across, decreasing=FALSE)
+Constraint_Counts_Across <- sort(Constraint_Counts_Across, decreasing=TRUE)
 
 IndFitBarPlot_LnLs_Across <- barplot(Constraint_Counts_Across, names.arg=c(3,2,1,0),main='Ind. Fit LnL Support Across Comparisons',ylab='Loci Count',xlab="Monophyletic Constraints Favored",ylim=c(0,70000))
 
@@ -759,7 +757,7 @@ constraint_counts_con %>%
 Constraint_Counts_Con_Across <- num_constraints_favored_con$n
 
 #then just re-ordering for 3 to 0, rather than 0 to 3; just an aesthetic thing
-Constraint_Counts_Con_Across <- sort(Constraint_Counts_Con_Across, decreasing=FALSE)
+Constraint_Counts_Con_Across <- sort(Constraint_Counts_Con_Across, decreasing=TRUE)
 
 ConFitBarPlot_LnLs_Across <- barplot(Constraint_Counts_Con_Across, names.arg=c(3,2,1,0),main='Concat. Fit LnL Support Across Comparisons',ylab='Loci Count',xlab="Monophyletic Constraints Favored",ylim=c(0,70000))
                                      
