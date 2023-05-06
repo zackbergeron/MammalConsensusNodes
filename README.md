@@ -17,6 +17,15 @@ group2,taxonName4
 
 
 
+Locus filtering using Branch Length Correlation
+
+This step can be used to filter out outlier loci based on discordance in branch length distribution. For use with this script a gene tree for each locus needs to be computed. See IQ-TREE analyses below, and iqtree_array_gtree.sh and iqtree_collect_gtrees.sh in particular. Output is a table with regression slope and R-squared, the latter can be used to rank and filter out loci with worst (lowest) values. See screening folder
+
+treescreen.sh - to run the screening job
+treescreen.R - tree screening R script, run by the shell script above
+
+
+
 Assess locus properties
 
 AMAS
