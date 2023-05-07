@@ -1,9 +1,8 @@
----
 title: "Placental Mammal Project Data Analysis"
 author: "Zachary Bergeron, credit to Alex Knyshov for majority of base script"
 date: "03/31/2023"
 output: html_document
----
+
   
 library(tidyr)
 library(dplyr)
@@ -335,7 +334,7 @@ lnLsignal_PRIiOUTX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUTX,"best_dLnL
 lnLsignal_PRIiNONOUTX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTX, "best_dLnL")
 
 
---------------------------------------------------------------------------
+
 
 
 ###Concatenated fit
@@ -590,7 +589,7 @@ lnLsignal_out_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUTX,"best_dLn
 lnLsignal_nonout_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUTX, "best_dLnL")
 
 
-----------------------------------------------------
+
 
   
 ###SCFs 
@@ -620,7 +619,7 @@ scf_tabPRIB <- select(scf_tabPRI, locname, MonoB)
 scf_tabPRIX <- select(scf_tabPRI, locname, MonoX)
 
 
--------------------------------------------------------------------------
+
 
   
 ###Relationship btwn lnL and sCF- For Monophyletic clade constraints
@@ -651,7 +650,7 @@ dLnL_VS_sCFtabPRIcX <- merge(dLnLtabPRIcrFX, scf_tabPRIX, by="locname")
 
 
 
-------------------------------------------------------------
+
 
 
 
