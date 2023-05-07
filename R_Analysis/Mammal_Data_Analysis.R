@@ -1,8 +1,9 @@
+---
 title: "Placental Mammal Project Data Analysis"
 author: "Zachary Bergeron, credit to Alex Knyshov for majority of base script"
 date: "03/31/2023"
 output: html_document
-
+---
   
 library(tidyr)
 library(dplyr)
@@ -36,7 +37,6 @@ dLnLtabPRIi_wide <- pivot_wider(dLnLtabPRIi, names_from = Tree, values_from = V2
 #AU test to assess signficance of LnL difference across whole dataset for any one comparison 
 
 #Mono-Afro vs. Star
-library(scaleboot)
 AUtestPRIiA <- relltest(na.omit(as.matrix(dLnLtabPRIi_wide[,c(2,5)])),nb=1000)
 AUtestPRIisummaryA <- summary(AUtestPRIiA)
 AUtestPRIisummaryA
@@ -268,50 +268,74 @@ Nloci_nonout_PRIiX <-  chisq_nonout_PRIiX$p
 
 #check and test signal strength - Median LnL per constraint/Star, also btwn outliers & non-outliers
 
+#test differences in signal strength
+
+#use Kruskal-Wallis+wilcox.test; Alex's function, didn't change at all
+
+run_custom_tests_unpaired <- function(dframe, signal){
+  dframe$locname <- as.factor(dframe$locname)
+  frml <- as.formula(paste(as.character(signal), "~", "topology"))
+  test_results <- kruskal.test(frml, data = dframe)
+  print(test_results)
+  if (test_results$p.value > 0.05){
+    return(test_results$p.value)
+  } else {
+    pwc <- wilcox_test(data=dframe, frml, paired = F, p.adjust.method = "bonferroni")
+    print (pwc)
+    medianvals <- dframe %>% group_by(topology) %>% summarise(across(!!ensym(signal), median, na.rm = TRUE)) %>% arrange(desc(!!ensym(signal)))
+    print(medianvals)
+    two_best <- pull(medianvals,topology)[1:2]
+    print(two_best)
+    return(pwc$p.adj[which(pwc$group1 %in% two_best & pwc$group2 %in% two_best)])
+  }
+  
+  
+}
+
 #Afrotheria
-median(dLnLtabPRIirFfiltA$dLnL[dLnLtabPRIirFfiltA$topology == "MonoA"])
-median(dLnLtabPRIirFfiltA$dLnL[dLnLtabPRIirFfiltA$topology == "Star"])
+median(dLnLtabPRIirFfiltA$best_dLnL[dLnLtabPRIirFfiltA$topology == "MonoA"])
+median(dLnLtabPRIirFfiltA$best_dLnL[dLnLtabPRIirFfiltA$topology == "Star"])
 
-median(dLnLtabPRIirFfiltOUTA$dLnL[dLnLtabPRIirFfiltOUTA$topology == "MonoA"])
-median(dLnLtabPRIirFfiltOUTA$dLnL[dLnLtabPRIirFfiltOUTA$topology == "Star"])
+median(dLnLtabPRIirFfiltOUTA$best_dLnL[dLnLtabPRIirFfiltOUTA$topology == "MonoA"])
+median(dLnLtabPRIirFfiltOUTA$best_dLnL[dLnLtabPRIirFfiltOUTA$topology == "Star"])
 
-median(dLnLtabPRIirFfiltNONOUTA$dLnL[dLnLtabPRIirFfiltNONOUTA$topology == "MonoA"])
-median(dLnLtabPRIirFfiltNONOUTA$dLnL[dLnLtabPRIirFfiltNONOUTA$topology == "Star"])
+median(dLnLtabPRIirFfiltNONOUTA$best_dLnL[dLnLtabPRIirFfiltNONOUTA$topology == "MonoA"])
+median(dLnLtabPRIirFfiltNONOUTA$best_dLnL[dLnLtabPRIirFfiltNONOUTA$topology == "Star"])
 
-lnLsignal_PRIiA <- run_custom_tests_unpaired(dLnLtabPRIirFfiltA, "dLnL")
-lnLsignal_PRIiOUTA <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUTA,"dLnL")
-lnLsignal_PRIiNONOUTA <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTA, "dLnL")
+lnLsignal_PRIiA <- run_custom_tests_unpaired(dLnLtabPRIirFfiltA, "best_dLnL")
+lnLsignal_PRIiOUTA <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUTA,"best_dLnL")
+lnLsignal_PRIiNONOUTA <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTA, "best_dLnL")
 
 #Boreoeutheria
-median(dLnLtabPRIirFfiltB$dLnL[dLnLtabPRIirFfiltB$topology == "MonoB"])
-median(dLnLtabPRIirFfiltB$dLnL[dLnLtabPRIirFfiltB$topology == "Star"])
+median(dLnLtabPRIirFfiltB$best_dLnL[dLnLtabPRIirFfiltB$topology == "MonoB"])
+median(dLnLtabPRIirFfiltB$best_dLnL[dLnLtabPRIirFfiltB$topology == "Star"])
 
-median(dLnLtabPRIirFfiltOUTB$dLnL[dLnLtabPRIirFfiltOUTB$topology == "MonoB"])
-median(dLnLtabPRIirFfiltOUTB$dLnL[dLnLtabPRIirFfiltOUTB$topology == "Star"])
+median(dLnLtabPRIirFfiltOUTB$best_dLnL[dLnLtabPRIirFfiltOUTB$topology == "MonoB"])
+median(dLnLtabPRIirFfiltOUTB$best_dLnL[dLnLtabPRIirFfiltOUTB$topology == "Star"])
 
-median(dLnLtabPRIirFfiltNONOUTB$dLnL[dLnLtabPRIirFfiltNONOUTB$topology == "MonoB"])
-median(dLnLtabPRIirFfiltNONOUTB$dLnL[dLnLtabPRIirFfiltNONOUTB$topology == "Star"])
+median(dLnLtabPRIirFfiltNONOUTB$best_dLnL[dLnLtabPRIirFfiltNONOUTB$topology == "MonoB"])
+median(dLnLtabPRIirFfiltNONOUTB$best_dLnL[dLnLtabPRIirFfiltNONOUTB$topology == "Star"])
 
-lnLsignal_PRIiB <- run_custom_tests_unpaired(dLnLtabPRIirFfiltB, "dLnL")
-lnLsignal_PRIiOUTB <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUTB,"dLnL")
-lnLsignal_PRIiNONOUTB <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTB, "dLnL")
+lnLsignal_PRIiB <- run_custom_tests_unpaired(dLnLtabPRIirFfiltB, "best_dLnL")
+lnLsignal_PRIiOUTB <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUTB,"best_dLnL")
+lnLsignal_PRIiNONOUTB <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTB, "best_dLnL")
 
 #Xenarthra
-median(dLnLtabPRIirFfiltX$dLnL[dLnLtabPRIirFfiltX$topology == "MonoX"])
-median(dLnLtabPRIirFfiltX$dLnL[dLnLtabPRIirFfiltX$topology == "Star"])
+median(dLnLtabPRIirFfiltX$best_dLnL[dLnLtabPRIirFfiltX$topology == "MonoX"])
+median(dLnLtabPRIirFfiltX$best_dLnL[dLnLtabPRIirFfiltX$topology == "Star"])
 
-median(dLnLtabPRIirFfiltOUTX$dLnL[dLnLtabPRIirFfiltOUTX$topology == "MonoX"])
-median(dLnLtabPRIirFfiltOUTX$dLnL[dLnLtabPRIirFfiltOUTX$topology == "Star"])
+median(dLnLtabPRIirFfiltOUTX$best_dLnL[dLnLtabPRIirFfiltOUTX$topology == "MonoX"])
+median(dLnLtabPRIirFfiltOUTX$best_dLnL[dLnLtabPRIirFfiltOUTX$topology == "Star"])
 
-median(dLnLtabPRIirFfiltNONOUTX$dLnL[dLnLtabPRIirFfiltNONOUTX$topology == "MonoX"])
-median(dLnLtabPRIirFfiltNONOUTX$dLnL[dLnLtabPRIirFfiltNONOUTX$topology == "Star"])
+median(dLnLtabPRIirFfiltNONOUTX$best_dLnL[dLnLtabPRIirFfiltNONOUTX$topology == "MonoX"])
+median(dLnLtabPRIirFfiltNONOUTX$best_dLnL[dLnLtabPRIirFfiltNONOUTX$topology == "Star"])
 
-lnLsignal_PRIiX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltX, "dLnL")
-lnLsignal_PRIiOUTX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUTX,"dLnL")
-lnLsignal_PRIiNONOUTX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTX, "dLnL")
+lnLsignal_PRIiX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltX, "best_dLnL")
+lnLsignal_PRIiOUTX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltOUTX,"best_dLnL")
+lnLsignal_PRIiNONOUTX <- run_custom_tests_unpaired(dLnLtabPRIirFfiltNONOUTX, "best_dLnL")
 
 
-
+--------------------------------------------------------------------------
 
 
 ###Concatenated fit
@@ -524,50 +548,51 @@ Nloci_nonout_PRIcX <-  chisq_nonout_PRIcX$p
 #signal strength tests - Median LnL per constraint/Star, also btwn outliers & non-outliers
 
 #Afrotheria
-median(dLnLtabPRIcrFfiltA$dLnL[dLnLtabPRIcrFfiltA$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltA$dLnL[dLnLtabPRIcrFfiltA$topology == "Star"])
+median(dLnLtabPRIcrFfiltA$best_dLnL[dLnLtabPRIcrFfiltA$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltA$best_dLnL[dLnLtabPRIcrFfiltA$topology == "Star"])
 
-median(dLnLtabPRIcrFfiltOUTA$dLnL[dLnLtabPRIcrFfiltOUTA$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltOUTA$dLnL[dLnLtabPRIcrFfiltOUTA$topology == "Star"])
+median(dLnLtabPRIcrFfiltOUTA$best_dLnL[dLnLtabPRIcrFfiltOUTA$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltOUTA$best_dLnL[dLnLtabPRIcrFfiltOUTA$topology == "Star"])
 
-median(dLnLtabPRIcrFfiltNONOUTA$dLnL[dLnLtabPRIcrFfiltNONOUTA$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltNONOUTA$dLnL[dLnLtabPRIcrFfiltNONOUTA$topology == "Star"])
+median(dLnLtabPRIcrFfiltNONOUTA$best_dLnL[dLnLtabPRIcrFfiltNONOUTA$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltNONOUTA$best_dLnL[dLnLtabPRIcrFfiltNONOUTA$topology == "Star"])
 
-lnLsignal_all_PRIcA <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltA, "dLnL")
-lnLsignal_out_PRIcA <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUTA,"dLnL")
-lnLsignal_nonout_PRIcA <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUTA, "dLnL")
+lnLsignal_all_PRIcA <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltA, "best_dLnL")
+lnLsignal_out_PRIcA <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUTA,"best_dLnL")
+lnLsignal_nonout_PRIcA <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUTA, "best_dLnL")
 
 #Boreoeutheria
-median(dLnLtabPRIcrFfiltB$dLnL[dLnLtabPRIcrFfiltB$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltB$dLnL[dLnLtabPRIcrFfiltB$topology == "Star"])
+median(dLnLtabPRIcrFfiltB$best_dLnL[dLnLtabPRIcrFfiltB$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltB$best_dLnL[dLnLtabPRIcrFfiltB$topology == "Star"])
 
-median(dLnLtabPRIcrFfiltOUTB$dLnL[dLnLtabPRIcrFfiltOUTB$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltOUTB$dLnL[dLnLtabPRIcrFfiltOUTB$topology == "Star"])
+median(dLnLtabPRIcrFfiltOUTB$best_dLnL[dLnLtabPRIcrFfiltOUTB$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltOUTB$best_dLnL[dLnLtabPRIcrFfiltOUTB$topology == "Star"])
 
-median(dLnLtabPRIcrFfiltNONOUTB$dLnL[dLnLtabPRIcrFfiltNONOUTB$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltNONOUTB$dLnL[dLnLtabPRIcrFfiltNONOUTB$topology == "Star"])
+median(dLnLtabPRIcrFfiltNONOUTB$best_dLnL[dLnLtabPRIcrFfiltNONOUTB$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltNONOUTB$best_dLnL[dLnLtabPRIcrFfiltNONOUTB$topology == "Star"])
 
-lnLsignal_all_PRIcB <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltB, "dLnL")
-lnLsignal_out_PRIcB <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUTB,"dLnL")
-lnLsignal_nonout_PRIcB <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUTB, "dLnL")
+lnLsignal_all_PRIcB <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltB, "best_dLnL")
+lnLsignal_out_PRIcB <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUTB,"best_dLnL")
+lnLsignal_nonout_PRIcB <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUTB, "best_dLnL")
 
 #Xenarthra
-median(dLnLtabPRIcrFfiltX$dLnL[dLnLtabPRIcrFfiltX$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltX$dLnL[dLnLtabPRIcrFfiltX$topology == "Star"])
+median(dLnLtabPRIcrFfiltX$best_dLnL[dLnLtabPRIcrFfiltX$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltX$best_dLnL[dLnLtabPRIcrFfiltX$topology == "Star"])
 
-median(dLnLtabPRIcrFfiltOUTX$dLnL[dLnLtabPRIcrFfiltOUTX$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltOUTX$dLnL[dLnLtabPRIcrFfiltOUTX$topology == "Star"])
+median(dLnLtabPRIcrFfiltOUTX$best_dLnL[dLnLtabPRIcrFfiltOUTX$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltOUTX$best_dLnL[dLnLtabPRIcrFfiltOUTX$topology == "Star"])
 
-median(dLnLtabPRIcrFfiltNONOUTX$dLnL[dLnLtabPRIcrFfiltNONOUTX$topology == "MonoA"])
-median(dLnLtabPRIcrFfiltNONOUTX$dLnL[dLnLtabPRIcrFfiltNONOUTX$topology == "Star"])
+median(dLnLtabPRIcrFfiltNONOUTX$best_dLnL[dLnLtabPRIcrFfiltNONOUTX$topology == "MonoA"])
+median(dLnLtabPRIcrFfiltNONOUTX$best_dLnL[dLnLtabPRIcrFfiltNONOUTX$topology == "Star"])
 
-lnLsignal_all_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltX, "dLnL")
-lnLsignal_out_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUTX,"dLnL")
-lnLsignal_nonout_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUTX, "dLnL")
-
-
+lnLsignal_all_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltX, "best_dLnL")
+lnLsignal_out_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltOUTX,"best_dLnL")
+lnLsignal_nonout_PRIcX <- run_custom_tests_unpaired(dLnLtabPRIcrFfiltNONOUTX, "best_dLnL")
 
 
+----------------------------------------------------
+
+  
 ###SCFs 
 
 #prep the data and stats
@@ -595,8 +620,9 @@ scf_tabPRIB <- select(scf_tabPRI, locname, MonoB)
 scf_tabPRIX <- select(scf_tabPRI, locname, MonoX)
 
 
+-------------------------------------------------------------------------
 
-
+  
 ###Relationship btwn lnL and sCF- For Monophyletic clade constraints
 
 #combining tables; for any particular contig, highest likelihood + topo & value of SCF 
@@ -625,7 +651,7 @@ dLnL_VS_sCFtabPRIcX <- merge(dLnLtabPRIcrFX, scf_tabPRIX, by="locname")
 
 
 
-
+------------------------------------------------------------
 
 
 
@@ -987,3 +1013,5 @@ Across_Dual_Support <- barplot(c(Both_MonoA_Count,Both_MonoB_Count,Both_MonoX_Co
 #Concatenated fit
 
 Across_Dual_Support_Con <- barplot(c(Both_MonoAc_Count,Both_MonoBc_Count,Both_MonoXc_Count),names.arg=c('MonoA','MonoB','MonoX'),ylab='Loci Count',main='Dual Support Across Comparisons (Concat.)',ylim=c(0,40000))
+
+###The End
